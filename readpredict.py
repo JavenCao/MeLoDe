@@ -1,3 +1,4 @@
+import re
 import time
 import pysam
 import random
@@ -12,24 +13,25 @@ from keras.models import model_from_json
 def get_args():
     parser = argparse.ArgumentParser()
     # input related parameters
-    parser.add_argument("-bam", "--bamfile", help="aligned BAM file with kinetic signals, fi/fp/ri/rp for hifi reads, and ip/pw for subreads")
-    parser.add_argument("-cg", "--cpgbed", help="CpG position, column1 is chr, column2 is pos, such as chr1 132. Here pos is 1-based coordinate on Rreference's forward strand")
-    parser.add_argument("-type", "--datatype", default='HIFI', help="data mode, SUBREAD or HIFI")
-    parser.add_argument("-r", "--radius", default='10',type=int, help="cpg +/- r")
-    parser.add_argument("-min", "--minsubreadsdepth", default='1', type=int, help="min subreads depth for a ZMW to be included")
-    parser.add_argument("-max", "--maxsubreadsdepth", default='60', type=int, help="max subreads depth for a ZMW to be included")
-    parser.add_argument("-maq", "--MappingQuality", default='30', type=int, help="min mapping quality for a read to be included")
-    parser.add_argument("-bpq", "--BaseQuality", default='0',type=int, help="min base quality required")
-    parser.add_argument("-chr", "--Chromosome", default="whole_genome", help="processing chromosome")
-    parser.add_argument("-j", "--modeljson", help="json file of the model, json file")
-    parser.add_argument("-w", "--modelweights", help="weights of the model, h5 file")
+    parser.add_argument("-inType","--inputType", required=True, help="aligned or unaligned")
+    parser.add_argument("-bam", "--bamfile", required=True, help="aligned/unaligned BAM file with kinetic signals, fi/fp/ri/rp for hifi reads, and ip/pw for subreads")
+    parser.add_argument("-cg", "--cpgbed", required=False, help="CpG position, column1 is chr, column2 is pos, such as chr1 132. Here pos is 1-based coordinate on Rreference's forward strand")
+    parser.add_argument("-type", "--datatype", required=True, default='HIFI', help="data mode, SUBREAD or HIFI")
+    parser.add_argument("-r", "--radius", required=False, default='10',type=int, help="cpg +/- r")
+    parser.add_argument("-min", "--minsubreadsdepth", required=False, default='1', type=int, help="min subreads depth for a ZMW to be included")
+    parser.add_argument("-max", "--maxsubreadsdepth", required=False, default='60', type=int, help="max subreads depth for a ZMW to be included")
+    parser.add_argument("-maq", "--MappingQuality", required=False, default='30', type=int, help="min mapping quality for a read to be included")
+    parser.add_argument("-bpq", "--BaseQuality", required=False, default='0',type=int, help="min base quality required")
+    parser.add_argument("-chr", "--Chromosome", required=False, default="whole_genome", help="processing chromosome")
+    parser.add_argument("-j", "--modeljson",required=False,  help="json file of the model, json file")
+    parser.add_argument("-w", "--modelweights", required=False, help="weights of the model, h5 file")
     # processing parameters
-    parser.add_argument("-p", "--Processor", type=int,help="Parallelism processors")
+    parser.add_argument("-p", "--Processor", required=False, type=int,help="Parallelism processors")
     # output related parameters
-    parser.add_argument("-sc", "--Scale", action='store_true',default=False, help="flag to indicate scale the signal of each subreads, (x-mean)/std. Without this tag is raw signal value")
-    parser.add_argument("-oe", "--outputType", help = "Output Types: ModBam,Feature,MoleculeLevel. ModBam: Modification Bam file. | Feature: Feature matrix. | MoleculeLevel: Molecule level modification prediction")
-    parser.add_argument("-o", "--outprefix", help = "[*outprefix*].modification.bam for ModBam outputType.  [*outprefix*].Kmat.txt.gz for Feature outputType. [*outprefix*].SingleMol.pre.txt.gz for MoleculeLevel outputType")
-    parser.add_argument("-keepK","--KeepKinetics", default="remove", help="remove or keep. flag to indicate keep or remove the kinetic sigals in the output Bam file")
+    parser.add_argument("-sc", "--Scale", required=False, action='store_true',default=False, help="flag to indicate scale the signal of each subreads, (x-mean)/std. Without this tag is raw signal value")
+    parser.add_argument("-oe", "--outputType", required=True, help = "Output Types: ModBam,Feature,MoleculeLevel. ModBam: Modification Bam file. | Feature: Feature matrix. | MoleculeLevel: Molecule level modification prediction")
+    parser.add_argument("-o", "--outprefix", required=True, help = "[*outprefix*].modification.bam for ModBam outputType.  [*outprefix*].Kmat.txt.gz for Feature outputType. [*outprefix*].SingleMol.pre.txt.gz for MoleculeLevel outputType")
+    parser.add_argument("-keepK","--KeepKinetics", required=True, default="remove", help="remove or keep. flag to indicate keep or remove the kinetic sigals in the output Bam file")
     #
     # TODOlater other parameters:2023-12-26
     # (1) CPU numbers
@@ -41,53 +43,172 @@ def get_args():
 #
 if __name__ == "__main__":
     # testing file:
+    # topbam="/storage/yangjianLab/caoyujie/project/meth/Raw_data/Cell_lines/HG01109/me/generate_hifi/m64284e_230525_074225/m64284e_230525_074225_hifi.bam"
     # bamfile="/storage/yangjianLab/caoyujie/project/meth/Bam_file/4_hifi_subreads/HG01109_WT_hifi/speed_testing_debug/chr22_5x.sort.HG01109_WT_hifi.aln.bam"
     # cgfile="/storage/yangjianLab/caoyujie/project/meth/5_Replication/pbMC/cpos/hg38/chr/chr22.cpos1.list"
     # modelweightsFile="/storage/yangjianLab/caoyujie/project/meth/5_Replication/3_Training_ground/zmw_model/factors/4_ancesty/7_train_by_all/2_ZMW_model/ZMW_model_5_inds.json.weights.h5"
     # modeljsonFile="/storage/yangjianLab/caoyujie/project/meth/5_Replication/3_Training_ground/zmw_model/factors/4_ancesty/7_train_by_all/2_ZMW_model/ZMW_model_5_inds.json"
     args = get_args()
     #
+    #
+    inputType = args.inputType
     bamf = args.bamfile
-    cgfile = args.cpgbed
     datatype = args.datatype
-    R = int(args.radius)
-    minsubdep = int(args.minsubreadsdepth)
-    maxsubdep = int(args.maxsubreadsdepth)
-    mappingQ = int(args.MappingQuality)   
-    baseQ = int(args.BaseQuality)
-    processingChr = args.Chromosome
-    modeljsonFile = args.modeljson
-    modelweightsFile = args.modelweights
-    #
-    proc = int(args.Processor)
-    #
-    scaleFlag = args.Scale
     outputType = args.outputType
     outputp = args.outprefix    
     KiFlag = args.KeepKinetics
-
-    if outputType == "Feature":
-        # Action: ZMW level feature extraction
-        outfile = outputp + ".Kmat.txt.gz"
-        pass
-    else:
+    #
+    #
+    if args.cpgbed:
+        cgfile = args.cpgbed
+    if args.radius:
+        R = int(args.radius)
+    if args.minsubreadsdepth:
+        minsubdep = int(args.minsubreadsdepth)
+    if args.maxsubreadsdepth:
+        maxsubdep = int(args.maxsubreadsdepth)
+    if args.MappingQuality:
+        mappingQ = int(args.MappingQuality)
+    if args.BaseQuality:
+        baseQ = int(args.BaseQuality)
+    if args.Chromosome:
+        processingChr = args.Chromosome
+    if args.modeljson:
+        modeljsonFile = args.modeljson
+    if args.modelweights:
+        modelweightsFile = args.modelweights
+    if args.Processor:
+        proc = int(args.Processor)
+    if args.Scale:
+        scaleFlag = args.Scale
+    #
+    #
+    if inputType == "unaligned":
+        outputfile = outputp + ".5mc.mod.unaligned.bam"
         # ZMWmeth model loading
         json_file = open(modeljsonFile, 'r')
         loaded_model_json = json_file.read()
         json_file.close()
         loaded_model = model_from_json(loaded_model_json)
         loaded_model.load_weights(modelweightsFile)
-        # cpg reference position loading
-        cglist = Buildcglist_dict(cgfile, processingChr)
-        # single CPU version, 2023-12-26
-        HiFiReadsMeth(inbamf, cglist, outputp, outputType, minsubdep, maxsubdep, baseQ, mappingQ, R, scaleFlag, KiFlag, loaded_model)
+        TOP_HiFiReadsMeth(Topbam=bamf, modTopbam=outputfile, minsubdep=minsubdep, maxsubdep=maxsubdep, baseQ=baseQ, R=R, scaleFlag=scaleFlag, KiFlag=KiFlag, loaded_model=loaded_model)
+    #
+    if inputType == "aligned":
+        if outputType == "Feature":
+            # Action: ZMW level feature extraction
+            outfile = outputp + ".Kmat.txt.gz"
+            HiFiReadsFeature(inbamf, cglist, outfile, minsubdep, maxsubdep, baseQ, mappingQ, R, scaleFlag)
+            pass
+        if outputType == "ModBam":
+            # ZMWmeth model loading
+            json_file = open(modeljsonFile, 'r')
+            loaded_model_json = json_file.read()
+            json_file.close()
+            loaded_model = model_from_json(loaded_model_json)
+            loaded_model.load_weights(modelweightsFile)
+            # cpg reference position loading
+            cglist = Buildcglist_dict(cgfile, processingChr)
+            # single CPU version, 2023-12-26
+            Aligned_HiFiReadsMeth(inbamf, cglist, outputp, outputType, minsubdep, maxsubdep, baseQ, mappingQ, R, scaleFlag, KiFlag, loaded_model)
 else:
     pass
 #
 #
 #
+def TOP_HiFiReadsMeth(Topbam, modTopbam, minsubdep, maxsubdep, baseQ, R, scaleFlag, KiFlag, loaded_model):
+    """
+    2023-12-27
+        INPUT: Topbam: the original unaligned HiFi Bam file with fi/fp/ri/rp signals
+        OUTPUT: modTopbam: modification called bam file tagged by MM,ML. And the fi/fp/ri/rp signals can be kept or removed according to KiFlag.
+        Compared with def Aligned_HiFiReadsMeth, the input Topbam file is unmapped/unaligned HiFi reads.        
+        So, we don't need to decode CIGAR string to locate CpG positions on a read, but using python string function
+    """
+    output_reads = []# store certain number of reads before writing out
+    samfile = pysam.AlignmentFile(Topbam, "rb", check_sq=False)
+    outsamfile = pysam.AlignmentFile(modTopbam, "wb", template=samfile)    
+    for read in samfile.fetch(until_eof = True):
+        fn = read.get_tag("fn")
+        rn = read.get_tag("rn")
+        total_subreads_dep = int(fn) + int(rn)
+        if (total_subreads_dep >= minsubdep) and (total_subreads_dep <= maxsubdep) and (int(fn) >= 1) and (int(rn) >= 1):
+            # ------------------------------------------------------------------------------------------------
+            # step1: get the alignment information for the read
+            read_fi_list = read.get_tag("fi")
+            read_fp_list = read.get_tag("fp")
+            read_ri_list = read.get_tag("ri")
+            read_rp_list = read.get_tag("rp")
+            read_SEQ_string = read.query_sequence
+            read_query_length = read.query_length
+            read_is_reverse = False
+            # ------------------------------------------------------------------------------------------------
+            # step2: locate genome CpG to each read
+            # return: [pos1, pos2, pos3, pos4, ... ] in decending order
+            cpgstring = 'CG'#5'->3' CG context
+            cpgPos_on_read = [m.start() for m in re.finditer(cpgstring, read_SEQ_string)]
+            if len(cpgPos_on_read) >= 1:
+                X_reads = np.empty((len(cpgPos_on_read), 13, 2*R+1))
+                for index in range(len(cpgPos_on_read)):
+                    pos_on_read = cpgPos_on_read[index]
+                    # collect read level features
+                    F_template_seq, F_ipd_list, F_pw_list, R_template_seq, R_ipd_list, R_pw_list = HiFiRead_cpg_K_Feature(pos_on_read, read_is_reverse, read_query_length, read_SEQ_string, read_fi_list, read_fp_list, read_ri_list, read_rp_list, scaleFlag)
+                    #
+                    # construct the feature matrix
+                    X_mat_cpg = Format_closedZMW(F_template_seq = F_template_seq, F_ipdlist = F_ipd_list, F_pwlist = F_pw_list, R_template_seq = R_template_seq, R_ipdlist = R_ipd_list, R_pwlist = R_pw_list, npasses = total_subreads_dep)
+                    #
+                    # add X_mat_cpg to the X_reads
+                    X_reads[index] = X_mat_cpg
+                MLtag_value = read_Meth_prediction(X_reads, loaded_model)
+                MLtag_tuple = ("ML", MLtag_value)
+                top_strand = read_SEQ_string#read_is_reverse = False
+                leadingcpg_pos = cpgPos_on_read[0]
+                seq_0_lcpg = top_strand[0:leadingcpg_pos]
+                count_0_lcpg = seq_0_lcpg.count('C')
+                MMtag_value = str(count_0_lcpg)
+                for c1, c2 in zip(cpgPos_on_read[::2], cpgPos_on_read[1::2]):
+                    c1_pos_on_read = c1
+                    c2_pos_on_read = c2
+                    seq_c1_c2 = top_strand[c1_pos_on_read:c2_pos_on_read]
+                    count_c1_c2 = seq_c1_c2.count('C') - 1 # c1 was counted in the last round
+                    MMtag_value = MMtag_value + "," + str(count_c1_c2)
+                # MMtag_tuple = ("MM","C+m,"+MMtag_value+";",'Z')
+                MMtag_tuple = ("MM","C+m,"+MMtag_value+";")
+                #
+                # (3)
+                if  KiFlag == "remove":
+                    read.set_tag('fi', None)
+                    read.set_tag('fp', None)
+                    read.set_tag('ri', None)
+                    read.set_tag('rp', None)
+                read_full_tags_list = read.get_tags(with_value_type = False)
+                read_full_tags_list.append(MMtag_tuple)
+                read_full_tags_list.append(MLtag_tuple)
+                read.set_tags(read_full_tags_list)
+                #
+                # (4) write out
+                output_reads.append(read)
+                if len(output_reads) >= 10000:
+                    for processed_read in output_reads:
+                        outsamfile.write(processed_read)
+                    output_reads.clear()
+    # Write out the remaining lines if any
+    if output_reads:
+        for processed_read in output_reads:
+            outsamfile.write(processed_read)
+    return 0
+#
+#
+#
+def HiFiReadsFeature(inbamf, cglist, outfile, minsubdep, maxsubdep, baseQ, mappingQ, R, scaleFlag):
+    """
+        INPUT: Aligned BAM file with fi/fp/ri/rp
+        OUTPUT: read-level features for each CpG
+    """
+    pass
+#
+#
+#
 # Coordinates in pysam are always 0-based (following the python convention)
-def HiFiReadsMeth(inbamf, cglist, outputp, outputType, minsubdep, maxsubdep, baseQ, mappingQ, R, scaleFlag, KiFlag, loaded_model):
+def Aligned_HiFiReadsMeth(inbamf, cglist, outputp, outputType, minsubdep, maxsubdep, baseQ, mappingQ, R, scaleFlag, KiFlag, loaded_model):
     """
        2023-12-26
        INPUT:  aligned BAM file with fi/fp/ri/rp tags
@@ -101,6 +222,7 @@ def HiFiReadsMeth(inbamf, cglist, outputp, outputType, minsubdep, maxsubdep, bas
         outsamfile = pysam.AlignmentFile(outputf_bam_file, "wb", template=samfile)
     if outputType == "MoleculeLevel":
         # Action: Sinle molecule level prediction
+        # to do later
         outfile = outputp + ".SingleMol.pre.txt.gz"
         pass
     winsize = 2 * R + 1
@@ -163,15 +285,20 @@ def HiFiReadsMeth(inbamf, cglist, outputp, outputType, minsubdep, maxsubdep, bas
                         MLtag_tuple = ("ML", MLtag_value)
                         #
                         # (2)
-                        leadingC_pos = cpgPos_on_read[all_cpgs[0]]
-                        seq_0_lC = read_SEQ_string[0:leadingC_pos]
-                        count_0_lC = seq_0_lC.count('C')
-                        MMtag_value = str(count_0_lC)
+                        if read_is_reverse:
+                            top_strand = str_complementary(read_SEQ_string[::-1])
+                        else:
+                            top_strand = read_SEQ_string
+                        #
+                        leadingcpg_pos = cpgPos_on_read[all_cpgs[0]]
+                        seq_0_lcpg = top_strand[0:leadingcpg_pos]
+                        count_0_lcpg = seq_0_lcpg.count('C')
+                        MMtag_value = str(count_0_lcpg)
                         for c1, c2 in zip(list(cpgPos_on_read.keys())[::2], list(cpgPos_on_read.keys())[1::2]):
                             c1_pos_on_read = cpgPos_on_read[c1]
                             c2_pos_on_read = cpgPos_on_read[c2]
-                            seq_c1_c2 = read_SEQ_string[c1_pos_on_read:c2_pos_on_read]
-                            count_c1_c2 = seq_c1_c2.count('C')
+                            seq_c1_c2 = top_strand[c1_pos_on_read:c2_pos_on_read]
+                            count_c1_c2 = seq_c1_c2.count('C') - 1 # c1 was counted in the last round
                             MMtag_value = MMtag_value + "," + str(count_c1_c2)
                         # MMtag_tuple = ("MM","C+m,"+MMtag_value+";",'Z')
                         MMtag_tuple = ("MM","C+m,"+MMtag_value+";")
@@ -229,21 +356,6 @@ def Matching_ratio_Fun(read):
     return Matching_ratio
 #
 #
-def Buildcglist_dict(cgfile, processingChr):
-    cglist_dict = defaultdict(list)
-    with open(cgfile, "r") as fp:
-        for line in fp:
-            div = line.rstrip("\n").split()
-            if processingChr == "whole_genome" or div[0] == processingChr:
-                chromosome = div[0]
-                value = div[0] + "_" + div[1]
-                cglist_dict[chromosome].append(value)
-    # Sort values numerically based on div[1]
-    for chromosome in cglist_dict:
-        cglist_dict[chromosome] = sorted(cglist_dict[chromosome], key=lambda x: int(x.split("_")[1]))
-    return cglist_dict
-#
-#
 def find_overlapping_cpg(cglist_sort_increasing, Ref_chr, Ref_start, Ref_end):
     chromosome_dict = {}
     overlapping_cpg = []
@@ -279,7 +391,7 @@ def locate_cpgPos_on_read(aln_ref_chr, aln_ref_start, read_cigar, overlapping_cp
     """
     FUN:locate ref_cpg_position on the read by decoding the cigar_string
     INPUT:overlapping_cpg = ["chr_C1","chr_C2","chr_C3" ... ]
-    RETURN:cpgPos_on_read_dict = ["chr_C1":pos1,"chr_C2":pos2 ... ] on this read
+    RETURN:cpgPos_on_read_dict = ["chr_C1":pos1,"chr_C2":pos2 ... ] on this read. |-Here,pos1,pos2...are 0-based on the read-|
     """
     cpgPos_on_read_dict = {}
     cigar_blk_num = len(read_cigar)
