@@ -132,7 +132,7 @@ def TOP_HiFiReadsMeth(Topbam, modTopbam, minsubdep, maxsubdep, baseQ, R, scaleFl
         total_subreads_dep = int(fn) + int(rn)
         if (total_subreads_dep >= minsubdep) and (total_subreads_dep <= maxsubdep) and (int(fn) >= 1) and (int(rn) >= 1):
             # ------------------------------------------------------------------------------------------------
-            # step1: get the alignment information for the read
+            # step1: get the information for the read
             read_fi_list = read.get_tag("fi")
             read_fp_list = read.get_tag("fp")
             read_ri_list = read.get_tag("ri")
@@ -141,19 +141,21 @@ def TOP_HiFiReadsMeth(Topbam, modTopbam, minsubdep, maxsubdep, baseQ, R, scaleFl
             read_query_length = read.query_length
             read_is_reverse = False
             # ------------------------------------------------------------------------------------------------
-            # step2: locate genome CpG to each read
-            # return: [pos1, pos2, pos3, pos4, ... ] in decending order
-            cpgstring = 'CG'#5'->3' CG context
+            # step2: locate CpG on each read
+            # return: [pos1, pos2, pos3, pos4, ... ] in decending order, pos1, pos2, pos3 are 0-based index, a[pos1] = 'C', a[pos1, pos1+1]='C', a[pos1, pos1+2] = 'CG'
+            cpgstring = 'CG'#5'->3' CG context. 2023-12-28: double-checked, template 5'-3'CpG is readed as 5'-3' CpG on reads by the DNA polymerase,Recall that DNA polymerase moves along in 3'->5' direction on the template, generating the 5'->3' reads.
             cpgPos_on_read = [m.start() for m in re.finditer(cpgstring, read_SEQ_string)]
             if len(cpgPos_on_read) >= 1:
                 X_reads = np.empty((len(cpgPos_on_read), 13, 2*R+1))
                 for index in range(len(cpgPos_on_read)):
                     pos_on_read = cpgPos_on_read[index]
                     # collect read level features
-                    F_template_seq, F_ipd_list, F_pw_list, R_template_seq, R_ipd_list, R_pw_list = HiFiRead_cpg_K_Feature(pos_on_read, read_is_reverse, read_query_length, read_SEQ_string, read_fi_list, read_fp_list, read_ri_list, read_rp_list, scaleFlag)
+                    # 2023-12-28: variables name change                    
+                    HiFiread_template_seq, HiFiread_template_ipd_list, HiFiread_template_pw_list, HiFiread_com_template_seq, HiFiread_com_template_ipd_list, HiFiread_com_template_pw_list = HiFiRead_cpg_K_Feature(pos_on_read, read_is_reverse, read_query_length, read_SEQ_string, read_fi_list, read_fp_list, read_ri_list, read_rp_list, scaleFlag)
                     #
+                    # 2023-12-28
                     # construct the feature matrix
-                    X_mat_cpg = Format_closedZMW(F_template_seq = F_template_seq, F_ipdlist = F_ipd_list, F_pwlist = F_pw_list, R_template_seq = R_template_seq, R_ipdlist = R_ipd_list, R_pwlist = R_pw_list, npasses = total_subreads_dep)
+                    X_mat_cpg = Format_closedZMW(F_template_seq = HiFiread_template_seq, F_ipdlist = HiFiread_template_ipd_list, F_pwlist = HiFiread_template_pw_list, R_template_seq = HiFiread_com_template_seq, R_ipdlist = HiFiread_com_template_ipd_list, R_pwlist = HiFiread_com_template_pw_list, npasses = total_subreads_dep)
                     #
                     # add X_mat_cpg to the X_reads
                     X_reads[index] = X_mat_cpg
@@ -194,6 +196,7 @@ def TOP_HiFiReadsMeth(Topbam, modTopbam, minsubdep, maxsubdep, baseQ, R, scaleFl
     if output_reads:
         for processed_read in output_reads:
             outsamfile.write(processed_read)
+    outsamfile.close()
     return 0
 #
 #
