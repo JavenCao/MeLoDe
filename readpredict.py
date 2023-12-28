@@ -3,8 +3,10 @@ import time
 import pysam
 import random
 import array
+import gzip
 import argparse
 import numpy as np
+import pandas as pd
 from readpredict import *
 from collections import defaultdict
 from keras.models import model_from_json
@@ -15,13 +17,12 @@ def get_args():
     # input related parameters
     parser.add_argument("-inType","--inputType", required=True, help="aligned or unaligned")
     parser.add_argument("-bam", "--bamfile", required=True, help="aligned/unaligned BAM file with kinetic signals, fi/fp/ri/rp for hifi reads, and ip/pw for subreads")
-    parser.add_argument("-cg", "--cpgbed", required=False, help="CpG position, column1 is chr, column2 is pos, such as chr1 132. Here pos is 1-based coordinate on Rreference's forward strand")
     parser.add_argument("-type", "--datatype", required=True, default='HIFI', help="data mode, SUBREAD or HIFI")
+    parser.add_argument("-cg", "--cpgbed", required=False, help="CpG position, column1 is chr, column2 is pos, such as chr1 132. Here pos is 1-based coordinate on Rreference's forward strand")
     parser.add_argument("-r", "--radius", required=False, default='10',type=int, help="cpg +/- r")
     parser.add_argument("-min", "--minsubreadsdepth", required=False, default='1', type=int, help="min subreads depth for a ZMW to be included")
     parser.add_argument("-max", "--maxsubreadsdepth", required=False, default='60', type=int, help="max subreads depth for a ZMW to be included")
     parser.add_argument("-maq", "--MappingQuality", required=False, default='30', type=int, help="min mapping quality for a read to be included")
-    parser.add_argument("-bpq", "--BaseQuality", required=False, default='0',type=int, help="min base quality required")
     parser.add_argument("-chr", "--Chromosome", required=False, default="whole_genome", help="processing chromosome")
     parser.add_argument("-j", "--modeljson",required=False,  help="json file of the model, json file")
     parser.add_argument("-w", "--modelweights", required=False, help="weights of the model, h5 file")
@@ -37,6 +38,7 @@ def get_args():
     # (1) CPU numbers
     # (2) openZMW
     # (3) models
+    # (4) subreads
     #
     return parser.parse_args()
 #  
@@ -59,8 +61,6 @@ if __name__ == "__main__":
     KiFlag = args.KeepKinetics
     #
     #
-    if args.cpgbed:
-        cgfile = args.cpgbed
     if args.radius:
         R = int(args.radius)
     if args.minsubreadsdepth:
@@ -69,14 +69,10 @@ if __name__ == "__main__":
         maxsubdep = int(args.maxsubreadsdepth)
     if args.MappingQuality:
         mappingQ = int(args.MappingQuality)
-    if args.BaseQuality:
-        baseQ = int(args.BaseQuality)
     if args.Chromosome:
         processingChr = args.Chromosome
-    if args.modeljson:
-        modeljsonFile = args.modeljson
-    if args.modelweights:
-        modelweightsFile = args.modelweights
+
+
     if args.Processor:
         proc = int(args.Processor)
     if args.Scale:
@@ -84,46 +80,119 @@ if __name__ == "__main__":
     #
     #
     if inputType == "unaligned":
-        outputfile = outputp + ".5mc.mod.unaligned.bam"
-        # ZMWmeth model loading
-        json_file = open(modeljsonFile, 'r')
-        loaded_model_json = json_file.read()
-        json_file.close()
-        loaded_model = model_from_json(loaded_model_json)
-        loaded_model.load_weights(modelweightsFile)
-        TOP_HiFiReadsMeth(Topbam=bamf, modTopbam=outputfile, minsubdep=minsubdep, maxsubdep=maxsubdep, baseQ=baseQ, R=R, scaleFlag=scaleFlag, KiFlag=KiFlag, loaded_model=loaded_model)
+        if outputType == "Feature":
+            outfile = outputp + ".Kmat.txt.gz"
+            TOP_HiFiReadsFeature(Topbam=bamf, outfile=outfile, minsubdep=minsubdep, maxsubdep=maxsubdep, R=R, scaleFlag=scaleFlag)
+        if outputType == "ModBam":
+            if args.modeljson and args.modelweights:
+                modeljsonFile = args.modeljson
+                modelweightsFile = args.modelweights
+                json_file = open(modeljsonFile, 'r')
+                loaded_model_json = json_file.read()
+                json_file.close()
+                loaded_model = model_from_json(loaded_model_json)
+                loaded_model.load_weights(modelweightsFile)
+                outputfile = outputp + ".5mc.mod.unaligned.bam"
+                TOP_HiFiReadsMeth(Topbam=bamf, modTopbam=outputfile, minsubdep=minsubdep, maxsubdep=maxsubdep, R=R, scaleFlag=scaleFlag, KiFlag=KiFlag, loaded_model=loaded_model)
+            else:
+                print("error! Please input model and model weights")
+    #    
     #
     if inputType == "aligned":
         if outputType == "Feature":
-            # Action: ZMW level feature extraction
-            outfile = outputp + ".Kmat.txt.gz"
-            HiFiReadsFeature(inbamf, cglist, outfile, minsubdep, maxsubdep, baseQ, mappingQ, R, scaleFlag)
-            pass
-        if outputType == "ModBam":
-            # ZMWmeth model loading
-            json_file = open(modeljsonFile, 'r')
-            loaded_model_json = json_file.read()
-            json_file.close()
-            loaded_model = model_from_json(loaded_model_json)
-            loaded_model.load_weights(modelweightsFile)
-            # cpg reference position loading
-            cglist = Buildcglist_dict(cgfile, processingChr)
-            # single CPU version, 2023-12-26
-            Aligned_HiFiReadsMeth(inbamf, cglist, outputp, outputType, minsubdep, maxsubdep, baseQ, mappingQ, R, scaleFlag, KiFlag, loaded_model)
+            if args.cpgbed:
+                cgfile = args.cpgbed
+                cglist = Buildcglist_dict(cgfile, processingChr)
+                outfile = outputp + ".Kmat.txt.gz"
+                Aligned_HiFiReadsFeature(bamf, cglist, outfile, minsubdep, maxsubdep, mappingQ, R, scaleFlag)
+            else:
+                print("error! Please input cpgbed file")
+
+        else:
+
+            if outputType == "ModBam" or outputType == "MoleculeLevel":
+                if args.modeljson and args.modelweights and args.cpgbed:
+                    modeljsonFile = args.modeljson
+                    modelweightsFile = args.modelweights
+                    json_file = open(modeljsonFile, 'r')
+                    loaded_model_json = json_file.read()
+                    json_file.close()
+                    loaded_model = model_from_json(loaded_model_json)
+                    loaded_model.load_weights(modelweightsFile)
+                    cgfile = args.cpgbed
+                    cglist = Buildcglist_dict(cgfile, processingChr)
+                    Aligned_HiFiReadsMeth(bamf, cglist, outputp, outputType, minsubdep, maxsubdep, mappingQ, R, scaleFlag, KiFlag, loaded_model)
+                else:
+                    print("error! Please input model file, weights file and cpg_position file")
+            else:
+                print("error! outputType should be ModBam or MoleculeLevel")
 else:
     pass
 #
 #
-#
-def TOP_HiFiReadsMeth(Topbam, modTopbam, minsubdep, maxsubdep, baseQ, R, scaleFlag, KiFlag, loaded_model):
+# double-checked on Thu Dec 28 14:54:43 CST 2023
+def TOP_HiFiReadsFeature(Topbam=bamf, outfile=outfile, minsubdep=minsubdep, maxsubdep=maxsubdep, R=R, scaleFlag=scaleFlag):
     """
-    2023-12-27
+        2023-12-28
+        INPUT: unaligned BAM file with fi/fp/ri/rp
+        OUTPUT: read-level features for each CpG(each line), but without the reference positions
+    """
+    output_lines = []
+    samfile = pysam.AlignmentFile(Topbam, "rb", check_sq=False)
+    fout = gzip.open(outfile, "wb")   
+    for read in samfile.fetch(until_eof = True):
+        fn = read.get_tag("fn")
+        rn = read.get_tag("rn")
+        total_subreads_dep = int(fn) + int(rn)
+        if (total_subreads_dep >= minsubdep) and (total_subreads_dep <= maxsubdep) and (int(fn) >= 1) and (int(rn) >= 1):
+            # ------------------------------------------------------------------------------------------------
+            # step1: get the information for the read
+            read_fi_list = read.get_tag("fi")
+            read_fp_list = read.get_tag("fp")
+            read_ri_list = read.get_tag("ri")
+            read_rp_list = read.get_tag("rp")
+            read_SEQ_string = read.query_sequence
+            read_query_length = read.query_length
+            read_is_reverse = False
+            zmwname = str(read.query_name.split("/")[0]) + "_" + str(read.query_name.split("/")[1])
+            # ------------------------------------------------------------------------------------------------
+            # step2: locate CpG on each read
+            # return: [pos1, pos2, pos3, pos4, ... ] in increasing order, pos1, pos2, pos3 are 0-based index, a[pos1] = 'C', a[pos1, pos1+1]='C', a[pos1, pos1+2] = 'CG'
+            cpgstring = 'CG'#5'->3' CG context. 2023-12-28: double-checked, template 5'-3'CpG is readed as 5'-3' CpG on reads by the DNA polymerase. Recall that DNA polymerase moves along in 3'->5' direction on the template, generating the 5'->3' reads.
+            cpgPos_on_read = [m.start() for m in re.finditer(cpgstring, read_SEQ_string)]
+            if len(cpgPos_on_read) >= 1:
+                for index in range(len(cpgPos_on_read)):
+                    pos_on_read = cpgPos_on_read[index]
+                    # collect read level features
+                    HiFiread_template_seq, HiFiread_template_ipd_list, HiFiread_template_pw_list, HiFiread_com_template_seq, HiFiread_com_template_ipd_list, HiFiread_com_template_pw_list = HiFiRead_cpg_K_Feature(pos_on_read, read_is_reverse, read_query_length, read_SEQ_string, read_fi_list, read_fp_list, read_ri_list, read_rp_list, scaleFlag)
+                    # format line parts
+                    F_template_seq_string = "".join(HiFiread_template_seq)
+                    F_ipd_part_line = ",".join(map(str, HiFiread_template_ipd_list))
+                    F_pw_part_line = ",".join(map(str, HiFiread_template_pw_list))
+                    R_template_seq_string = "".join(HiFiread_com_template_seq)
+                    R_ipd_part_line = ",".join(map(str, HiFiread_com_template_ipd_list))
+                    R_pw_part_line = ",".join(map(str, HiFiread_com_template_pw_list))
+                    # combine line parts into a line
+                    output_cpg_line = f"{zmwname}\t{pos_on_read}\t{fn}\t{rn}\t{F_template_seq_string}\t{F_ipd_part_line}\t{F_pw_part_line}\t{R_template_seq_string}\t{R_ipd_part_line}\t{R_pw_part_line}\n"
+                    output_lines.append(output_cpg_line)
+                    if len(output_lines) >= 10000:
+                        fout.write(''.join(output_lines).encode('utf-8'))
+                        output_lines.clear()
+    # Write out the remaining lines if any
+    if output_lines:
+        fout.write(''.join(output_lines).encode('utf-8'))
+    return 0
+#
+#
+def TOP_HiFiReadsMeth(Topbam, modTopbam, minsubdep, maxsubdep, R, scaleFlag, KiFlag, loaded_model):
+    """
+    2023-12-27,2023-12-28
         INPUT: Topbam: the original unaligned HiFi Bam file with fi/fp/ri/rp signals
         OUTPUT: modTopbam: modification called bam file tagged by MM,ML. And the fi/fp/ri/rp signals can be kept or removed according to KiFlag.
         Compared with def Aligned_HiFiReadsMeth, the input Topbam file is unmapped/unaligned HiFi reads.        
         So, we don't need to decode CIGAR string to locate CpG positions on a read, but using python string function
     """
-    output_reads = []# store certain number of reads before writing out
+    output_reads = []
     samfile = pysam.AlignmentFile(Topbam, "rb", check_sq=False)
     outsamfile = pysam.AlignmentFile(modTopbam, "wb", template=samfile)    
     for read in samfile.fetch(until_eof = True):
@@ -150,18 +219,17 @@ def TOP_HiFiReadsMeth(Topbam, modTopbam, minsubdep, maxsubdep, baseQ, R, scaleFl
                 for index in range(len(cpgPos_on_read)):
                     pos_on_read = cpgPos_on_read[index]
                     # collect read level features
-                    # 2023-12-28: variables name change                    
                     HiFiread_template_seq, HiFiread_template_ipd_list, HiFiread_template_pw_list, HiFiread_com_template_seq, HiFiread_com_template_ipd_list, HiFiread_com_template_pw_list = HiFiRead_cpg_K_Feature(pos_on_read, read_is_reverse, read_query_length, read_SEQ_string, read_fi_list, read_fp_list, read_ri_list, read_rp_list, scaleFlag)
-                    #
-                    # 2023-12-28
                     # construct the feature matrix
                     X_mat_cpg = Format_closedZMW(F_template_seq = HiFiread_template_seq, F_ipdlist = HiFiread_template_ipd_list, F_pwlist = HiFiread_template_pw_list, R_template_seq = HiFiread_com_template_seq, R_ipdlist = HiFiread_com_template_ipd_list, R_pwlist = HiFiread_com_template_pw_list, npasses = total_subreads_dep)
-                    #
                     # add X_mat_cpg to the X_reads
                     X_reads[index] = X_mat_cpg
-                MLtag_value = read_Meth_prediction(X_reads, loaded_model)
+                predictions_list = read_Meth_prediction(X_reads, loaded_model)
+                # (1) ML tag
+                MLtag_value = array.array('i',(predictions_list * 256).astype(int))
                 MLtag_tuple = ("ML", MLtag_value)
-                top_strand = read_SEQ_string#read_is_reverse = False
+                # (2) MM tag
+                top_strand = read_SEQ_string
                 leadingcpg_pos = cpgPos_on_read[0]
                 seq_0_lcpg = top_strand[0:leadingcpg_pos]
                 count_0_lcpg = seq_0_lcpg.count('C')
@@ -174,8 +242,7 @@ def TOP_HiFiReadsMeth(Topbam, modTopbam, minsubdep, maxsubdep, baseQ, R, scaleFl
                     MMtag_value = MMtag_value + "," + str(count_c1_c2)
                 # MMtag_tuple = ("MM","C+m,"+MMtag_value+";",'Z')
                 MMtag_tuple = ("MM","C+m,"+MMtag_value+";")
-                #
-                # (3)
+                # (3) kinetics tag keep or remove
                 if  KiFlag == "remove":
                     read.set_tag('fi', None)
                     read.set_tag('fp', None)
@@ -185,7 +252,6 @@ def TOP_HiFiReadsMeth(Topbam, modTopbam, minsubdep, maxsubdep, baseQ, R, scaleFl
                 read_full_tags_list.append(MMtag_tuple)
                 read_full_tags_list.append(MLtag_tuple)
                 read.set_tags(read_full_tags_list)
-                #
                 # (4) write out
                 output_reads.append(read)
                 if len(output_reads) >= 10000:
@@ -201,36 +267,15 @@ def TOP_HiFiReadsMeth(Topbam, modTopbam, minsubdep, maxsubdep, baseQ, R, scaleFl
 #
 #
 #
-def HiFiReadsFeature(inbamf, cglist, outfile, minsubdep, maxsubdep, baseQ, mappingQ, R, scaleFlag):
+def Aligned_HiFiReadsFeature(inbamf, cglist, outfile, minsubdep, maxsubdep, mappingQ, R, scaleFlag):
     """
-        INPUT: Aligned BAM file with fi/fp/ri/rp
-        OUTPUT: read-level features for each CpG
-    """
-    pass
-#
-#
-#
-# Coordinates in pysam are always 0-based (following the python convention)
-def Aligned_HiFiReadsMeth(inbamf, cglist, outputp, outputType, minsubdep, maxsubdep, baseQ, mappingQ, R, scaleFlag, KiFlag, loaded_model):
-    """
-       2023-12-26
-       INPUT:  aligned BAM file with fi/fp/ri/rp tags
-       OUTPUT: when outputType == "ModBam": aligned BAM file with modification status coding in MM and ML tags, with/without fi/fp/ri/rp tags(KiFlag="move","keep")
-               when outputType == "MoleculeLevel": Sinle molecule level prediction
+        2023-12-28
+        INPUT: aligned BAM file with fi/fp/ri/rp
+        OUTPUT: read-level features for each CpG with the reference positions
     """
     samfile = pysam.AlignmentFile(inbamf, "rb")
-    if outputType == "ModBam":
-        # Action: modification coded in ML/MM tag of the output BAM file
-        outputf_bam_file = outputp + ".modification.bam"
-        outsamfile = pysam.AlignmentFile(outputf_bam_file, "wb", template=samfile)
-    if outputType == "MoleculeLevel":
-        # Action: Sinle molecule level prediction
-        # to do later
-        outfile = outputp + ".SingleMol.pre.txt.gz"
-        pass
-    winsize = 2 * R + 1
-    output_reads = []# store certain number of reads before writing out
-    #
+    fout = gzip.open(outfile, "wb")
+    output_lines = []
     for read in samfile.fetch():
         if (not read.is_secondary) and (not read.is_supplementary) and (read.mapping_quality >= mappingQ) and (Matching_ratio_Fun(read) >= 0.85):
             fn = read.get_tag("fn")
@@ -254,12 +299,12 @@ def Aligned_HiFiReadsMeth(inbamf, cglist, outputp, outputType, minsubdep, maxsub
                     read_query_length = read.query_length
                     read_cigartuples = read.cigartuples
                     haplotype, haplotype_block = (str(read.get_tag("HP")), str(read.get_tag("PS"))) if read.has_tag("HP") else ("X", "X")# HP:i:2   PS:i:11457
+                    zmwname = str(read.query_name.split("/")[0]) + "_" + str(read.query_name.split("/")[1])
                     # ------------------------------------------------------------------------------------------------
                     # step2: locate genome CpG to each read
                     # return: ["cpg1":pos1,"cpg2":pos2 ... ]
                     cpgPos_on_read = locate_cpgPos_on_read(aln_ref_chr = aln_ref_chr, aln_ref_start = aln_ref_start, read_cigar = read_cigartuples, overlapping_cpg = overlapping_cpg)
                     if len(cpgPos_on_read) >= 1:
-                        X_reads = np.empty((len(cpgPos_on_read), 13, 2*R+1))
                         all_cpgs = list(cpgPos_on_read)
                         for index in range(len(cpgPos_on_read)):
                             cpg = all_cpgs[index]
@@ -269,64 +314,152 @@ def Aligned_HiFiReadsMeth(inbamf, cglist, outputp, outputType, minsubdep, maxsub
                             # collect read level features
                             F_template_seq, F_ipd_list, F_pw_list, R_template_seq, R_ipd_list, R_pw_list = HiFiRead_cpg_K_Feature(pos_on_read, read_is_reverse, read_query_length, read_SEQ_string, read_fi_list, read_fp_list, read_ri_list, read_rp_list, scaleFlag)
                             #
+                            F_template_seq_string = "".join(F_template_seq)
+                            F_ipd_part_line = ",".join(map(str, F_ipd_list))
+                            F_pw_part_line = ",".join(map(str, F_pw_list))
+                            R_template_seq_string = "".join(R_template_seq)
+                            R_ipd_part_line = ",".join(map(str, R_ipd_list))
+                            R_pw_part_line = ",".join(map(str, R_pw_list))
+                            output_cpg_line = f"{Chr}\t{pos_C}\t{zmwname}\t{fn}\t{rn}\t{F_template_seq_string}\t{F_ipd_part_line}\t{F_pw_part_line}\t{R_template_seq_string}\t{R_ipd_part_line}\t{R_pw_part_line}\t{haplotype}\t{haplotype_block}\n"
+                            output_lines.append(output_cpg_line)
+                            if len(output_lines) >= 10000:
+                                fout.write(''.join(output_lines).encode('utf-8'))
+                                output_lines.clear()
+    # Write out the remaining lines if any
+    if output_lines:
+        fout.write(''.join(output_lines).encode('utf-8'))
+    return 0
+#
+#
+#
+# Coordinates in pysam are always 0-based (following the python convention)
+def Aligned_HiFiReadsMeth(bamf, cglist, outputp, outputType, minsubdep, maxsubdep, baseQ, mappingQ, R, scaleFlag, KiFlag, loaded_model):
+    """
+       2023-12-26
+       INPUT:  aligned BAM file with fi/fp/ri/rp tags
+       OUTPUT: when outputType == "ModBam": aligned BAM file with modification status coding in MM and ML tags, with/without fi/fp/ri/rp tags(KiFlag="move","keep")
+               when outputType == "MoleculeLevel": Sinle molecule level prediction
+    """
+    samfile = pysam.AlignmentFile(bamf, "rb")
+    output_reads = []
+    #
+    # ---------
+    if outputType == "ModBam":
+        # Action: modification coded in ML/MM tag of the output BAM file
+        outputf_bam_file = outputp + ".modification.bam"
+        outsamfile = pysam.AlignmentFile(outputf_bam_file, "wb", template=samfile)
+    if outputType == "MoleculeLevel":
+        # Action: Sinle molecule level prediction
+        outfile = outputp + ".SingleMol.pre.txt.gz"
+        fout = gzip.open(outfile, "wb")
+    # ---------
+    #
+    # winsize = 2 * R + 1
+    # prediction process, by read by cpg.
+    for read in samfile.fetch():
+        if (not read.is_secondary) and (not read.is_supplementary) and (read.mapping_quality >= mappingQ) and (Matching_ratio_Fun(read) >= 0.85):
+            fn = read.get_tag("fn")
+            rn = read.get_tag("rn")
+            total_subreads_dep = int(fn) + int(rn)
+            if (total_subreads_dep >= minsubdep) and (total_subreads_dep <= maxsubdep) and (int(fn) >= 1) and (int(rn) >= 1):
+                aln_ref_chr = read.reference_name
+                aln_ref_start = read.reference_start #0-based leftmost coordinate
+                aln_ref_end = read.reference_end
+                overlapping_cpg = find_overlapping_cpg(cglist_sort_increasing = cglist[aln_ref_chr], Ref_chr = aln_ref_chr, Ref_start = aln_ref_start, Ref_end = aln_ref_end)
+                #
+                if len(overlapping_cpg) >= 1:
+                    # ------------------------------------------------------------------------------------------------
+                    # step1: get the alignment information for the read
+                    read_fi_list = read.get_tag("fi")
+                    read_fp_list = read.get_tag("fp")
+                    read_ri_list = read.get_tag("ri")
+                    read_rp_list = read.get_tag("rp")
+                    read_SEQ_string = read.query_sequence
+                    read_is_reverse = read.is_reverse
+                    read_query_length = read.query_length
+                    read_cigartuples = read.cigartuples
+                    haplotype, haplotype_block = (str(read.get_tag("HP")), str(read.get_tag("PS"))) if read.has_tag("HP") else ("X", "X")# HP:i:2   PS:i:11457
+                    zmwname = str(read.query_name.split("/")[0]) + "_" + str(read.query_name.split("/")[1])
+                    # ------------------------------------------------------------------------------------------------
+                    # step2: locate genome CpG to each read
+                    # return: ["cpg1":pos1,"cpg2":pos2 ... ]
+                    cpgPos_on_read = locate_cpgPos_on_read(aln_ref_chr = aln_ref_chr, aln_ref_start = aln_ref_start, read_cigar = read_cigartuples, overlapping_cpg = overlapping_cpg)
+                    if len(cpgPos_on_read) >= 1:
+                        X_reads = np.empty((len(cpgPos_on_read), 13, 2*R+1))
+                        all_cpgs = list(cpgPos_on_read)
+                        for index in range(len(cpgPos_on_read)):
+                            cpg = all_cpgs[index]
+                            pos_on_read = cpgPos_on_read[cpg]
+                            # collect read level features
+                            F_template_seq, F_ipd_list, F_pw_list, R_template_seq, R_ipd_list, R_pw_list = HiFiRead_cpg_K_Feature(pos_on_read, read_is_reverse, read_query_length, read_SEQ_string, read_fi_list, read_fp_list, read_ri_list, read_rp_list, scaleFlag)
                             # construct the feature matrix
                             X_mat_cpg = Format_closedZMW(F_template_seq = F_template_seq, F_ipdlist = F_ipd_list, F_pwlist = F_pw_list, R_template_seq = R_template_seq, R_ipdlist = R_ipd_list, R_pwlist = R_pw_list, npasses = total_subreads_dep)
-                            #
                             # add X_mat_cpg to the X_reads
                             X_reads[index] = X_mat_cpg
-                        # -----------------------------------
-                        # CpGs on a read finished, next, (1) predict methy_prob and create ML tag; (2) create MM tag; (3) iterate each tag, keeping or removing fi/fp/ri/rp tags; (4) create new alignment enquiry and write out
-                        # -----------------------------------
-                       
-                        # (1)
-                        # start_time = time.time()    
-                        MLtag_value = read_Meth_prediction(X_reads, loaded_model)
-                        # end_time = time.time()
-                        # execution_time = end_time - start_time
-                        # print(execution_time)
-                        # MLtag_tuple = ("ML", MLtag_value, "B")
-                        MLtag_tuple = ("ML", MLtag_value)
                         #
-                        # (2)
-                        if read_is_reverse:
-                            top_strand = str_complementary(read_SEQ_string[::-1])
-                        else:
-                            top_strand = read_SEQ_string
-                        #
-                        leadingcpg_pos = cpgPos_on_read[all_cpgs[0]]
-                        seq_0_lcpg = top_strand[0:leadingcpg_pos]
-                        count_0_lcpg = seq_0_lcpg.count('C')
-                        MMtag_value = str(count_0_lcpg)
-                        for c1, c2 in zip(list(cpgPos_on_read.keys())[::2], list(cpgPos_on_read.keys())[1::2]):
-                            c1_pos_on_read = cpgPos_on_read[c1]
-                            c2_pos_on_read = cpgPos_on_read[c2]
-                            seq_c1_c2 = top_strand[c1_pos_on_read:c2_pos_on_read]
-                            count_c1_c2 = seq_c1_c2.count('C') - 1 # c1 was counted in the last round
-                            MMtag_value = MMtag_value + "," + str(count_c1_c2)
-                        # MMtag_tuple = ("MM","C+m,"+MMtag_value+";",'Z')
-                        MMtag_tuple = ("MM","C+m,"+MMtag_value+";")
-                        #
-                        # (3)
-                        if  KiFlag == "remove":
-                            read.set_tag('fi', None)
-                            read.set_tag('fp', None)
-                            read.set_tag('ri', None)
-                            read.set_tag('rp', None)
-                        read_full_tags_list = read.get_tags(with_value_type = False)
-                        read_full_tags_list.append(MMtag_tuple)
-                        read_full_tags_list.append(MLtag_tuple)
-                        read.set_tags(read_full_tags_list)
-                        #
-                        # (4) write out
-                        output_reads.append(read)
-                        if len(output_reads) >= 10000:
-                            for processed_read in output_reads:
-                                outsamfile.write(processed_read)
-                            output_reads.clear()
-    # Write out the remaining lines if any
-    if output_reads:
-        for processed_read in output_reads:
-            outsamfile.write(processed_read)
+                        # make predictions for the current read
+                        predictions_list = read_Meth_prediction(X_reads, loaded_model)
+                        if outputType == "MoleculeLevel":
+                            Chr_info, Pos_info = zip(*[cpg.split("_") for cpg in all_cpgs])
+                            common_info = [zmwname, total_subreads_dep, haplotype, haplotype_block, '+']
+                            ZMW_info, zmwdep_info, Hap_info, HapBlk_info, strand_sign = [[info] * len(cpgPos_on_read) for info in common_info]
+                            predictions_bi = (predictions_list >= 0.5).astype(int)
+                            df_testing_pre = pd.DataFrame(
+                                {
+                                    "Chr": Chr_info,
+                                    "Pos1": Pos_info,
+                                    "ZMWid": ZMW_info,
+                                    "subdepth": zmwdep_info,
+                                    "Hap": Hap_info,
+                                    "HapBlk": HapBlk_info,
+                                    "strand": strand_sign,
+                                    "y_pred": predictions_list,
+                                    "y_pred_bi": predictions_bi
+                                }
+                            )
+                            df_testing_pre.to_csv(fout, sep='\t', index=False, compression='gzip')
+                        if outputType == "ModBam":
+                            # (1)
+                            MLtag_value = array.array('i',(predictions_list * 256).astype(int))
+                            # MLtag_tuple = ("ML", MLtag_value, "B")
+                            MLtag_tuple = ("ML", MLtag_value)
+                            # (2) MM tag
+                            if read_is_reverse:
+                                top_strand = str_complementary(read_SEQ_string[::-1])
+                            else:
+                                top_strand = read_SEQ_string
+                            leadingcpg_pos = cpgPos_on_read[all_cpgs[0]]
+                            seq_0_lcpg = top_strand[0:leadingcpg_pos]
+                            count_0_lcpg = seq_0_lcpg.count('C')
+                            MMtag_value = str(count_0_lcpg)
+                            for c1, c2 in zip(list(cpgPos_on_read.keys())[::2], list(cpgPos_on_read.keys())[1::2]):
+                                c1_pos_on_read = cpgPos_on_read[c1]
+                                c2_pos_on_read = cpgPos_on_read[c2]
+                                seq_c1_c2 = top_strand[c1_pos_on_read:c2_pos_on_read]
+                                count_c1_c2 = seq_c1_c2.count('C') - 1 # c1 was counted in the last round
+                                MMtag_value = MMtag_value + "," + str(count_c1_c2)
+                            # MMtag_tuple = ("MM","C+m,"+MMtag_value+";",'Z')
+                            MMtag_tuple = ("MM","C+m,"+MMtag_value+";")
+                            # (3)
+                            if  KiFlag == "remove":
+                                read.set_tag('fi', None)
+                                read.set_tag('fp', None)
+                                read.set_tag('ri', None)
+                                read.set_tag('rp', None)
+                            read_full_tags_list = read.get_tags(with_value_type = False)
+                            read_full_tags_list.append(MMtag_tuple)
+                            read_full_tags_list.append(MLtag_tuple)
+                            read.set_tags(read_full_tags_list)
+                            # (4) write out
+                            output_reads.append(read)
+                            if len(output_reads) >= 10000:
+                                for processed_read in output_reads:
+                                    outsamfile.write(processed_read)
+                                output_reads.clear()
+                            # Write out the remaining lines if any
+                            if output_reads:
+                                for processed_read in output_reads:
+                                    outsamfile.write(processed_read)
     return 0
 #
 #
@@ -486,7 +619,7 @@ def read_Meth_prediction(X_reads, loaded_model):
     """return np.array for each CpG on the reads"""
     X_testing = np.transpose(X_reads, (0, 2, 1))
     predictions = loaded_model.predict(X_testing)
-    predictions_list = array.array('i',(predictions.flatten() * 256).astype(int))
+    predictions_list = predictions.flatten()
     return predictions_list
 #
 #
@@ -501,13 +634,13 @@ def HiFiRead_cpg_K_Feature(pos_on_read, read_is_reverse, read_query_length, read
         # (1)
         # For subreads mapped to Ref_R_strand, which carrying information when syn the complementary F_strand, key 'F' #
         # information is stored in fi, fp tags
-        RefFC_on_f_list = read_query_length - pos_on_read - 1#checked, 2023-12-25
+        RefFC_on_f_list = read_query_length - pos_on_read - 1#checked, 2023-12-25,2023-12-28
         L_RefFC_on_f_list = RefFC_on_f_list - R - 1
         R_RefFC_on_f_list = RefFC_on_f_list + R
         if (L_RefFC_on_f_list > 0) and (R_RefFC_on_f_list < read_query_length):
             F_ipd_list = getkineticswin(inputKlist=read_fi_list[L_RefFC_on_f_list:R_RefFC_on_f_list],scaleFlag=scaleFlag)
             F_pw_list = getkineticswin(inputKlist=read_fp_list[L_RefFC_on_f_list:R_RefFC_on_f_list],scaleFlag=scaleFlag)
-            # 2023-12-25:F_template_seq is the template sequence context in 3'->5' direction, which is the moving direction of the DNA polyermase
+            # 2023-12-28 2023-12-25:F_template_seq is the template sequence context in 3'->5' direction, which is the moving direction of the DNA polyermase
             F_template_seq = read_SEQ_string[::-1][L_RefFC_on_f_list:R_RefFC_on_f_list]
             #
         # (2)
