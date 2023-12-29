@@ -214,6 +214,12 @@ def TOP_HiFiReadsMeth(Topbam, modTopbam, minsubdep, maxsubdep, R, scaleFlag, KiF
             # return: [pos1, pos2, pos3, pos4, ... ] in decending order, pos1, pos2, pos3 are 0-based index, a[pos1] = 'C', a[pos1, pos1+1]='C', a[pos1, pos1+2] = 'CG'
             cpgstring = 'CG'#5'->3' CG context. 2023-12-28: double-checked, template 5'-3'CpG is readed as 5'-3' CpG on reads by the DNA polymerase,Recall that DNA polymerase moves along in 3'->5' direction on the template, generating the 5'->3' reads.
             cpgPos_on_read = [m.start() for m in re.finditer(cpgstring, read_SEQ_string)]
+            # bug fix: 2023-12-29, remove cpg at the head or tail of a read, which causing out of range index
+            if cpgPos_on_read[0] < R:
+                cpgPos_on_read = cpgPos_on_read[1:]
+            if cpgPos_on_read[-1] < len(read_SEQ_string) - R:
+                cpgPos_on_read = cpgPos_on_read[:-1]
+            #
             if len(cpgPos_on_read) >= 1:
                 X_reads = np.empty((len(cpgPos_on_read), 13, 2*R+1))
                 for index in range(len(cpgPos_on_read)):
@@ -618,7 +624,7 @@ def string_checker(string_a):
 def read_Meth_prediction(X_reads, loaded_model):
     """return np.array for each CpG on the reads"""
     X_testing = np.transpose(X_reads, (0, 2, 1))
-    predictions = loaded_model.predict(X_testing)
+    predictions = loaded_model.predict(X_testing,batch_size=10)
     predictions_list = predictions.flatten()
     return predictions_list
 #
