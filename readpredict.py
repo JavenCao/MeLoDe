@@ -134,8 +134,12 @@ else:
 #
 #
 # double-checked on Thu Dec 28 14:54:43 CST 2023
+# 2024-01-03, checking
 def TOP_HiFiReadsFeature(Topbam=bamf, outfile=outfile, minsubdep=minsubdep, maxsubdep=maxsubdep, R=R, scaleFlag=scaleFlag):
     """
+        2024-01-03: Template_strand of HiFi read is defined as Top_strand. 
+        
+
         2023-12-28
         INPUT: unaligned BAM file with fi/fp/ri/rp
         OUTPUT: read-level features for each CpG(each line), but without the reference positions
@@ -156,8 +160,8 @@ def TOP_HiFiReadsFeature(Topbam=bamf, outfile=outfile, minsubdep=minsubdep, maxs
             read_rp_list = read.get_tag("rp")
             read_SEQ_string = read.query_sequence
             read_query_length = read.query_length
-            read_is_reverse = False
             zmwname = str(read.query_name.split("/")[0]) + "_" + str(read.query_name.split("/")[1])
+            read_is_reverse = False# checked, 2024-01-03
             # ------------------------------------------------------------------------------------------------
             # step2: locate CpG on each read
             # return: [pos1, pos2, pos3, pos4, ... ] in increasing order, pos1, pos2, pos3 are 0-based index, a[pos1] = 'C', a[pos1, pos1+1]='C', a[pos1, pos1+2] = 'CG'
@@ -166,8 +170,9 @@ def TOP_HiFiReadsFeature(Topbam=bamf, outfile=outfile, minsubdep=minsubdep, maxs
             if len(cpgPos_on_read) >= 1:
                 for index in range(len(cpgPos_on_read)):
                     pos_on_read = cpgPos_on_read[index]
-                    # collect read level features
-                    HiFiread_template_seq, HiFiread_template_ipd_list, HiFiread_template_pw_list, HiFiread_com_template_seq, HiFiread_com_template_ipd_list, HiFiread_com_template_pw_list = HiFiRead_cpg_K_Feature(pos_on_read, read_is_reverse, read_query_length, read_SEQ_string, read_fi_list, read_fp_list, read_ri_list, read_rp_list, scaleFlag)
+                    # 2024-01-03, checked! collect read level features
+                    HiFiread_com_template_seq, HiFiread_com_template_ipd_list, HiFiread_com_template_pw_list, HiFiread_template_seq, HiFiread_template_ipd_list, HiFiread_template_pw_list = HiFiRead_cpg_K_Feature(pos_on_read, read_is_reverse, read_query_length, read_SEQ_string, read_fi_list, read_fp_list, read_ri_list, read_rp_list, scaleFlag)
+                    #
                     # format line parts
                     F_template_seq_string = "".join(HiFiread_template_seq)
                     F_ipd_part_line = ",".join(map(str, HiFiread_template_ipd_list))
@@ -189,7 +194,7 @@ def TOP_HiFiReadsFeature(Topbam=bamf, outfile=outfile, minsubdep=minsubdep, maxs
 #
 def TOP_HiFiReadsMeth(Topbam, modTopbam, minsubdep, maxsubdep, R, scaleFlag, KiFlag, loaded_model):
     """
-    2023-12-27,2023-12-28
+    2024-01-03,2023-12-27,2023-12-28
         INPUT: Topbam: the original unaligned HiFi Bam file with fi/fp/ri/rp signals
         OUTPUT: modTopbam: modification called bam file tagged by MM,ML. And the fi/fp/ri/rp signals can be kept or removed according to KiFlag.
         Compared with def Aligned_HiFiReadsMeth, the input Topbam file is unmapped/unaligned HiFi reads.        
@@ -211,24 +216,29 @@ def TOP_HiFiReadsMeth(Topbam, modTopbam, minsubdep, maxsubdep, R, scaleFlag, KiF
             read_rp_list = read.get_tag("rp")
             read_SEQ_string = read.query_sequence
             read_query_length = read.query_length
-            read_is_reverse = False
+            read_is_reverse = False# checked, 2024-01-03
             # ------------------------------------------------------------------------------------------------
             # step2: locate CpG on each read
             # return: [pos1, pos2, pos3, pos4, ... ] in decending order, pos1, pos2, pos3 are 0-based index, a[pos1] = 'C', a[pos1, pos1+1]='C', a[pos1, pos1+2] = 'CG'
             cpgstring = 'CG'#5'->3' CG context. 2023-12-28: double-checked, template 5'-3'CpG is readed as 5'-3' CpG on reads by the DNA polymerase,Recall that DNA polymerase moves along in 3'->5' direction on the template, generating the 5'->3' reads.
             cpgPos_on_read = [m.start() for m in re.finditer(cpgstring, read_SEQ_string)]
-            # bug fix: 2023-12-29, remove cpg at the head or tail of a read, which causing out of range index
-            if cpgPos_on_read[0] < R:
-                cpgPos_on_read = cpgPos_on_read[1:]
-            if cpgPos_on_read[-1] < len(read_SEQ_string) - R:
-                cpgPos_on_read = cpgPos_on_read[:-1]
-            #
+            # ------------------------------------------------------------------------------------------------
+            # remove cpg at the head or tail of a read, which causing out of range index
+            i = 0
+            while i < len(cpgPos_on_read) and cpgPos_on_read[0] < R + 5:
+                i += 1
+            cpgPos_on_read = cpgPos_on_read[i:]
+            i = len(cpgPos_on_read) - 1
+            while i >= 0 and cpgPos_on_read[i] < len(read_SEQ_string) - R - 5:
+                i -= 1
+            cpgPos_on_read = cpgPos_on_read[:i+1]
+            # ------------------------------------------------------------------------------------------------
             if len(cpgPos_on_read) >= 1:
                 X_reads = np.empty((len(cpgPos_on_read), 13, 2*R+1))
                 for index in range(len(cpgPos_on_read)):
                     pos_on_read = cpgPos_on_read[index]
                     # collect read level features
-                    HiFiread_template_seq, HiFiread_template_ipd_list, HiFiread_template_pw_list, HiFiread_com_template_seq, HiFiread_com_template_ipd_list, HiFiread_com_template_pw_list = HiFiRead_cpg_K_Feature(pos_on_read, read_is_reverse, read_query_length, read_SEQ_string, read_fi_list, read_fp_list, read_ri_list, read_rp_list, scaleFlag)
+                    HiFiread_com_template_seq, HiFiread_com_template_ipd_list, HiFiread_com_template_pw_list, HiFiread_template_seq, HiFiread_template_ipd_list, HiFiread_template_pw_list = HiFiRead_cpg_K_Feature(pos_on_read, read_is_reverse, read_query_length, read_SEQ_string, read_fi_list, read_fp_list, read_ri_list, read_rp_list, scaleFlag)
                     # construct the feature matrix
                     X_mat_cpg = Format_closedZMW(F_template_seq = HiFiread_template_seq, F_ipdlist = HiFiread_template_ipd_list, F_pwlist = HiFiread_template_pw_list, R_template_seq = HiFiread_com_template_seq, R_ipdlist = HiFiread_com_template_ipd_list, R_pwlist = HiFiread_com_template_pw_list, npasses = total_subreads_dep)
                     # add X_mat_cpg to the X_reads
@@ -644,24 +654,21 @@ def HiFiRead_cpg_K_Feature(pos_on_read, read_is_reverse, read_query_length, read
         RefFC_on_f_list = read_query_length - pos_on_read - 1#checked, 2023-12-25,2023-12-28
         L_RefFC_on_f_list = RefFC_on_f_list - R - 1
         R_RefFC_on_f_list = RefFC_on_f_list + R
-        if (L_RefFC_on_f_list > 0) and (R_RefFC_on_f_list < read_query_length):
-            F_ipd_list = getkineticswin(inputKlist=read_fi_list[L_RefFC_on_f_list:R_RefFC_on_f_list],scaleFlag=scaleFlag)
-            F_pw_list = getkineticswin(inputKlist=read_fp_list[L_RefFC_on_f_list:R_RefFC_on_f_list],scaleFlag=scaleFlag)
-            # 2023-12-28 2023-12-25:F_template_seq is the template sequence context in 3'->5' direction, which is the moving direction of the DNA polyermase
-            F_template_seq = read_SEQ_string[::-1][L_RefFC_on_f_list:R_RefFC_on_f_list]
-            #
+        F_ipd_list = getkineticswin(inputKlist=read_fi_list[L_RefFC_on_f_list:R_RefFC_on_f_list],scaleFlag=scaleFlag)
+        F_pw_list = getkineticswin(inputKlist=read_fp_list[L_RefFC_on_f_list:R_RefFC_on_f_list],scaleFlag=scaleFlag)
+        F_template_seq = (read_SEQ_string[pos_on_read-R:pos_on_read+R+1])[::-1]
+        #
         # (2)
         # For subreads mapped to Ref_F_strand, which carrying information when syn the complementary R_strand, key 'R' #
         # information is stored in ri, rp tags
         RefRC_on_r_list = pos_on_read + 1
         L_RefRC_on_r_list = RefRC_on_r_list - R - 1
         R_RefRC_on_r_list = RefRC_on_r_list + R
-        if (L_RefRC_on_r_list > 0) and (R_RefRC_on_r_list < read_query_length):
-            R_ipd_list = getkineticswin(inputKlist=read_ri_list[L_RefRC_on_r_list:R_RefRC_on_r_list],scaleFlag=scaleFlag)
-            R_pw_list = getkineticswin(inputKlist=read_rp_list[L_RefRC_on_r_list:R_RefRC_on_r_list],scaleFlag=scaleFlag)
-            R_template_seq = (str_complementary(read_SEQ_string))[L_RefRC_on_r_list:R_RefRC_on_r_list]
-            R_ipd_list = R_ipd_list[::-1]
-            R_pw_list = R_pw_list[::-1]
+        R_ipd_list = getkineticswin(inputKlist=read_ri_list[L_RefRC_on_r_list:R_RefRC_on_r_list],scaleFlag=scaleFlag)
+        R_pw_list = getkineticswin(inputKlist=read_rp_list[L_RefRC_on_r_list:R_RefRC_on_r_list],scaleFlag=scaleFlag)
+        R_template_seq = (str_complementary(read_SEQ_string))[L_RefRC_on_r_list:R_RefRC_on_r_list]
+        R_ipd_list = R_ipd_list[::-1]
+        R_pw_list = R_pw_list[::-1]
 
     else:# this hifi read aligned to Ref_F_strand
         # (1)
@@ -670,23 +677,21 @@ def HiFiRead_cpg_K_Feature(pos_on_read, read_is_reverse, read_query_length, read
         RefRC_on_f_list = pos_on_read + 1
         L_RefRC_on_f_list = RefRC_on_f_list - R - 1
         R_RefRC_on_f_list = RefRC_on_f_list + R
-        if (L_RefRC_on_f_list>0) and (R_RefRC_on_f_list<read_query_length):
-            R_ipd_list = getkineticswin(inputKlist=read_fi_list[L_RefRC_on_f_list:R_RefRC_on_f_list],scaleFlag=scaleFlag)
-            R_pw_list = getkineticswin(inputKlist=read_fp_list[L_RefRC_on_f_list:R_RefRC_on_f_list],scaleFlag=scaleFlag)
-            R_template_seq = (str_complementary(read_SEQ_string))[L_RefRC_on_f_list:R_RefRC_on_f_list]
-            #
+        R_ipd_list = getkineticswin(inputKlist=read_fi_list[L_RefRC_on_f_list:R_RefRC_on_f_list],scaleFlag=scaleFlag)
+        R_pw_list = getkineticswin(inputKlist=read_fp_list[L_RefRC_on_f_list:R_RefRC_on_f_list],scaleFlag=scaleFlag)
+        R_template_seq = (str_complementary(read_SEQ_string))[L_RefRC_on_f_list:R_RefRC_on_f_list]
+        #
         # (2)
         # For subreads mapped to Ref_R_strand, which carrying information when syn the complementary F_strand, key 'F' #
         # information is stored in ri, rp tags
         RefFC_on_r_list = read_query_length - pos_on_read - 1
         L_RefFC_on_r_list = RefFC_on_r_list - R - 1
         R_RefFC_on_r_list = RefFC_on_r_list + R
-        if (L_RefFC_on_r_list>0) and (R_RefFC_on_r_list<read_query_length):
-            F_ipd_list = getkineticswin(inputKlist=read_ri_list[L_RefFC_on_r_list:R_RefFC_on_r_list],scaleFlag=scaleFlag)
-            F_pw_list = getkineticswin(inputKlist=read_rp_list[L_RefFC_on_r_list:R_RefFC_on_r_list],scaleFlag=scaleFlag)
-            F_template_seq = read_SEQ_string[::-1][L_RefFC_on_r_list:R_RefFC_on_r_list]
-            F_ipd_list = F_ipd_list[::-1]
-            F_pw_list = F_pw_list[::-1]
+        F_ipd_list = getkineticswin(inputKlist=read_ri_list[L_RefFC_on_r_list:R_RefFC_on_r_list],scaleFlag=scaleFlag)
+        F_pw_list = getkineticswin(inputKlist=read_rp_list[L_RefFC_on_r_list:R_RefFC_on_r_list],scaleFlag=scaleFlag)
+        F_template_seq = (read_SEQ_string[pos_on_read-R:pos_on_read+R+1])[::-1]
+        F_ipd_list = F_ipd_list[::-1]
+        F_pw_list = F_pw_list[::-1]
     return F_template_seq, F_ipd_list, F_pw_list, R_template_seq, R_ipd_list, R_pw_list
 #
 #
@@ -992,3 +997,39 @@ def get_ccs(seqstring_arrays):
         selected_char = random.choice(most_common_chars)
         consensus_sequence += selected_char
     return consensus_sequence
+
+#
+##
+##
+##
+##
+##
+##
+##
+##
+##
+#
+# def TOP_HiFiRead_cpg_K_Feature(pos_on_SEQ, read_is_reverse, read_query_length, read_SEQ_string, read_fi_list, read_fp_list, read_ri_list, read_rp_list):
+#     """
+#     2024-01-03: Feature extraction for aligned HiFi reads
+#     """
+#     # HiFi_template_strand
+#     HiFiread_template_C_on_f_list = pos_on_SEQ + 1
+#     L_pos_on_f_list = HiFiread_template_C_on_f_list - R - 1
+#     R_pos_on_f_list = HiFiread_template_C_on_f_list + R
+#     HiFiread_template_seq = (str_complementary(read_SEQ_string))[L_pos_on_f_list:R_pos_on_f_list]
+#     HiFiread_template_ipd_list = getkineticswin(inputKlist=read_fi_list[L_pos_on_f_list:R_pos_on_f_list],scaleFlag=scaleFlag)
+#     HiFiread_template_pw_list = getkineticswin(inputKlist=read_fp_list[L_pos_on_f_list:R_pos_on_f_list],scaleFlag=scaleFlag)
+    
+#     # HiFi_complementary_strand
+
+#     HiFiread_com_template_C_on_r_list = read_query_length - pos_on_SEQ - 1
+#     L_pos_on_r_list = HiFiread_com_template_C_on_r_list - R - 1
+#     R_pos_on_r_list = HiFiread_com_template_C_on_r_list + R
+
+#     HiFiread_com_template_seq = (read_SEQ_string[pos_on_SEQ-R:pos_on_SEQ+R+1])[::-1]
+#     HiFiread_com_template_ipd_list = getkineticswin(inputKlist=read_ri_list[L_pos_on_r_list:R_pos_on_r_list],scaleFlag=scaleFlag)
+#     HiFiread_com_template_pw_list = getkineticswin(inputKlist=read_rp_list[L_pos_on_r_list:R_pos_on_r_list],scaleFlag=scaleFlag)
+#     HiFiread_com_template_ipd_list = HiFiread_com_template_ipd_list[::-1]
+#     HiFiread_com_template_pw_list = HiFiread_com_template_pw_list[::-1]
+#     return HiFiread_template_seq, HiFiread_template_ipd_list, HiFiread_template_pw_list, HiFiread_com_template_seq, HiFiread_com_template_ipd_list,HiFiread_com_template_pw_list
