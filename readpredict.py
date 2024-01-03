@@ -690,7 +690,7 @@ def HiFiRead_cpg_K_Feature(pos_on_read, read_is_reverse, read_query_length, read
     return F_template_seq, F_ipd_list, F_pw_list, R_template_seq, R_ipd_list, R_pw_list
 #
 #
-def Buildcglist_dict(cgfile, processingChr):
+def Buildcglist_dict(cgfile, processingChr="whole_genome"):
     cglist_dict = defaultdict(list)
     with open(cgfile, "r") as fp:
         for line in fp:
@@ -735,15 +735,15 @@ def getkineticswin(inputKlist, scaleFlag=True):
 #
 # 2023-12-29: Aligned subreads feature extraction
 # 2024-01-02: Revised
-def Aligned_subreadsBam_Feature(bamf, cglist, outputp, outputType, minsubdep, maxsubdep, mappingQ, R, scaleFlag, KiFlag, loaded_model):
+# 2024-01-03: Revised
+def Aligned_subreadsBam_Feature(bamf, cglist, outputp, outputType, mappingQ, R, scaleFlag):
     """
-        2024-01-01,2023-12-29
+        2024-01-03
         INPUT: aligned subreads BAM file with ip/pw tags
-        notes:minsubdep, maxsubdep are with respected to ZMW molecule
         OUTPUT: outputType == "MoleculeLevel": Single molecule level prediction
     """
     samfile = pysam.AlignmentFile(bamf, "rb")
-    Feature_dict = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
+    Feature_dict = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(list))))
     if outputType == "MoleculeLevel":
         outfile = outputp + ".SingleMol.KFeature.txt.gz"
         fout = gzip.open(outfile, "wb")
@@ -753,7 +753,6 @@ def Aligned_subreadsBam_Feature(bamf, cglist, outputp, outputType, minsubdep, ma
                 aln_ref_chr = read.reference_name
                 aln_ref_start = read.reference_start #0-based leftmost coordinate
                 aln_ref_end = read.reference_end
-                # 2023-12-29: go over again
                 overlapping_cpg = find_overlapping_cpg(cglist_sort_increasing = cglist[aln_ref_chr], Ref_chr = aln_ref_chr, Ref_start = aln_ref_start, Ref_end = aln_ref_end)
                 if len(overlapping_cpg) >= 1:
                     read_ipd_list = read.get_tag("ip")
@@ -766,21 +765,27 @@ def Aligned_subreadsBam_Feature(bamf, cglist, outputp, outputType, minsubdep, ma
                     zmwname = str(read.query_name.split("/")[0]) + "_" + str(read.query_name.split("/")[1])
                     cpgPos_on_read = locate_cpgPos_on_SEQ(aln_ref_chr = aln_ref_chr, aln_ref_start = aln_ref_start, read_cigar = read_cigartuples, overlapping_cpg = overlapping_cpg)
                     # ----------------------------------------------------------------------------------------
-                    # 2024-01-01: Check and remove leading elements
-                    while cpgPos_on_read and cpgPos_on_read[0] < R:
-                        cpgPos_on_read = cpgPos_on_read[1:]
-                    # Check and remove trailing elements
-                    while cpgPos_on_read and cpgPos_on_read[-1] >= len(read_SEQ_string) - R:
-                        cpgPos_on_read = cpgPos_on_read[:-1]
+                    # heading or tailing removing
+                    cpgPos_on_read_keys = list(cpgPos_on_read)
+                    for key in cpgPos_on_read_keys:
+                        if cpgPos_on_read[key] < (R+5):
+                            del cpgPos_on_read[key]
+                        else:
+                            break
+                    for key in reversed(cpgPos_on_read_keys):
+                        if cpgPos_on_read[key] > len(read_SEQ_string) - R - 5:
+                            del cpgPos_on_read[key]
+                        else:
+                            break
                     # ----------------------------------------------------------------------------------------
                     if len(cpgPos_on_read) >= 1:
                         all_cpgs = list(cpgPos_on_read)
                         for index in range(len(cpgPos_on_read)):
                             cpg = all_cpgs[index]
                             pos_on_SEQ = cpgPos_on_read[cpg]
-                            # collect read level features
-                            strand_sign, seq_string, ipd_list, pw_list = SubRead_cpg_K_Feature(pos_on_SEQ, read_is_reverse, read_query_length, read_SEQ_string, read_ipd_list, read_pw_list, scaleFlag)
-                            Feature_dict =[cpg][zmwname][strand_sign][read_query_name] = [seq_string, ipd_list, pw_list]
+                            # collect subread level features, should be raw value
+                            strand_sign, seq_string, ipd_list, pw_list = SubRead_cpg_K_Feature(pos_on_SEQ, read_is_reverse, read_query_length, read_SEQ_string, read_ipd_list, read_pw_list)
+                            Feature_dict[cpg][zmwname][strand_sign][read_query_name] = [seq_string, ipd_list, pw_list]
                         # ---
                         # after reading certain lines, check whether the safe distance reached    
                         processed_read_count = processed_read_count + 1
@@ -790,15 +795,14 @@ def Aligned_subreadsBam_Feature(bamf, cglist, outputp, outputType, minsubdep, ma
                             first_C_chr, first_C_pos = sorted_processed_cpgs[0].split("_")
                             last_C_chr, last_C_pos = sorted_processed_cpgs[-1].split("_")
                             if first_C_chr == last_C_chr:
-                                if int(last_C_pos) - int(first_C_pos) >= 1000000:
-                                    # 2024-01-02
+                                if int(last_C_pos) - int(first_C_pos) >= 500000:
                                     # output the top 50% of the CpG in Feature_dict
                                     top_index = int(len(sorted_processed_cpgs) / 2)
                                     top_cpgs = sorted_processed_cpgs[0:top_index]
                                     #
                                     for top_cpg in top_cpgs:
                                         for zmw in Feature_dict[top_cpg]:
-                                            ZMWline_by_subreads = Create_ZMWline_by_Subreads(top_cpg, zmw, Feature_dict[top_cpg][zmw], openZMWFlag)
+                                            ZMWline_by_subreads = Create_ZMWline_by_Subreads(top_cpg, zmw, Feature_dict[top_cpg][zmw], scaleFlag)
                                             fout.write(ZMWline_by_subreads.encode('utf-8'))
                                             processed_read_count = 0
                                     # remove the top cpgs from the Feature_dict
@@ -809,7 +813,7 @@ def Aligned_subreadsBam_Feature(bamf, cglist, outputp, outputType, minsubdep, ma
                                 # should write out all the elements in the dict
                                 for out_cpg in list(Feature_dict):
                                     for zmw in Feature_dict[out_cpg]:
-                                        ZMWline_by_subreads = Create_ZMWline_by_Subreads(out_cpg, zmw, Feature_dict[top_cpg][zmw], openZMWFlag)
+                                        ZMWline_by_subreads = Create_ZMWline_by_Subreads(out_cpg, zmw, Feature_dict[top_cpg][zmw], scaleFlag)
                                         fout.write(ZMWline_by_subreads.encode('utf-8'))
                                 Feature_dict.clear()# clear all
                                 processed_read_count = 0
@@ -821,43 +825,39 @@ def Aligned_subreadsBam_Feature(bamf, cglist, outputp, outputType, minsubdep, ma
         if Feature_dict:
             for out_cpg in list(Feature_dict):
                 for zmw in Feature_dict[out_cpg]:
-                    ZMWline_by_subreads = Create_ZMWline_by_Subreads(out_cpg, zmw, Feature_dict[top_cpg][zmw], openZMWFlag)
+                    ZMWline_by_subreads = Create_ZMWline_by_Subreads(out_cpg, zmw, Feature_dict[top_cpg][zmw])
                     fout.write(ZMWline_by_subreads.encode('utf-8'))
     else:
         print("error! subreads bam should beoutputType == MoleculeLeve")
 #
 #
-#
-def SubRead_cpg_K_Feature(pos_on_SEQ, read_is_reverse, read_query_length, read_SEQ_string, read_ipd_list, read_pw_list, scaleFlag):
+def SubRead_cpg_K_Feature(pos_on_SEQ, read_is_reverse, read_query_length, read_SEQ_string, read_ipd_list, read_pw_list):
     """
-        2024-01-02:
-        Notes:pos_on_SEQ
-        return Seq_context_on_Template(3'->5'), ipd, pw
+        2024-01-03: subreads keep raw ipd/pw for each of them
+        2024-01-02: return Seq_context_on_Template(3'->5'), ipd, pw
     """
     if read_is_reverse:# subreads mapped to Ref(-)_strand, synthesising the Ref(+)_template, ipd/pw are therefor with respected to Ref(+). Template is Ref(+), but should be reverse into 3'-5'
         adjust_pos_on_read = read_query_length - pos_on_SEQ - 1#5'->3' position on read
         L_pos = adjust_pos_on_read - R - 1#5'->3' position on read
         R_pos = adjust_pos_on_read + R#5'->3' position on read
-        strand_sign ='F'# 'Ref(+)'#Template strand sign
-        ipd_list = getkineticswin(read_ipd_list[L_pos:R_pos],scaleFlag=scaleFlag)
-        pw_list = getkineticswin(read_pw_list[L_pos:R_pos],scaleFlag=scaleFlag)
-        # 2024-01-02
-        # debug: should be template sequence context in 3'->5' direction, so the position should be with respected to SEQ? HiFi_function error??
-        seq_string = (read_SEQ_string[::-1])[pos_on_SEQ-R:pos_on_SEQ+R+1]
+        strand_sign ='F'# 'Ref(+)'#Template strand sign 
+        ipd_list = read_ipd_list[L_pos:R_pos]
+        pw_list = read_pw_list[L_pos:R_pos]
+        # template sequence context in 3'->5' direction. (ToDo)the position should be with respected to SEQ? HiFi_function error??
+        seq_string = (read_SEQ_string[pos_on_SEQ-R:pos_on_SEQ+R+1])[::-1]
         #
     else:# subreads mapped to Ref(+), synthesising the Ref(-)_template, ipd/pw are therefor with respected to Ref(-). Template is Ref(-), and should be adjusted to 3'->5'
         adjust_pos_on_read = pos_on_SEQ + 1#5'->3' position on read
         L_pos = adjust_pos_on_read - R - 1#5'->3' position on read
         R_pos = adjust_pos_on_read + R#5'->3' position on read
         strand_sign = 'R'# 'Ref(-)'
-        ipd_list = getkineticswin(read_ipd_list[L_pos:R_pos],scaleFlag=scaleFlag)
-        pw_list = getkineticswin(read_pw_list[L_pos:R_pos],scaleFlag=scaleFlag)
+        ipd_list = read_ipd_list[L_pos:R_pos]
+        pw_list = read_pw_list[L_pos:R_pos]
         seq_string = str_complementary(read_SEQ_string)[pos_on_SEQ-R:pos_on_SEQ+R+1]
     return strand_sign,seq_string,ipd_list,pw_list
 #
 #
-#
-def Create_ZMWline_by_Subreads(cpg, zmw, zmw_Feature_Dict, openZMWFlag = False):
+def Create_ZMWline_by_Subreads(cpg, zmw, zmw_Feature_Dict, scaleFlag=True):
     """
     2024-01-01:
     INPUT:
@@ -873,14 +873,16 @@ def Create_ZMWline_by_Subreads(cpg, zmw, zmw_Feature_Dict, openZMWFlag = False):
     zmwF_subdep = len(zmw_features.get('F', []))
     zmwR_subdep = len(zmw_features.get('R', []))
     #
-    F_template_seq, F_ipd_list, F_pw_list, R_template_seq, R_ipd_list, R_pw_list = Sum_Subreads_ZMW(zmw_features)
+    F_template_seq, F_ipd_list, F_pw_list, R_template_seq, R_ipd_list, R_pw_list = Sum_Subreads_ZMW(zmw_features,scaleFlag)
     #
-    F_template_seq_string = "".join(F_template_seq)
-    F_ipd_part_line = ",".join(map(str, F_ipd_list))
-    F_pw_part_line = ",".join(map(str, F_pw_list))
-    R_template_seq_string = "".join(R_template_seq)
-    R_ipd_part_line = ",".join(map(str, R_ipd_list))
-    R_pw_part_line = ",".join(map(str, R_pw_list))
+    F_template_seq_string = "NA" if F_template_seq == "NA" else "".join(F_template_seq)
+    F_ipd_part_line = "NA" if np.array_equal(F_ipd_list, np.array(["NA"])) else ",".join(map(str, F_ipd_list[0]))
+    F_pw_part_line = "NA" if np.array_equal(F_pw_list, np.array(["NA"])) else ",".join(map(str, F_pw_list[0]))
+    #
+    R_template_seq_string = "NA" if R_template_seq == "NA" else "".join(R_template_seq)
+    R_ipd_part_line = "NA" if np.array_equal(R_ipd_list, np.array(["NA"])) else ",".join(map(str, R_ipd_list[0]))
+    R_pw_part_line = "NA" if np.array_equal(R_pw_list, np.array(["NA"])) else ",".join(map(str, R_pw_list[0]))
+
     output_cpg_ZMW_line = f"{Chr}\t{pos_C}\t{zmw}\t{zmwF_subdep}\t{zmwR_subdep}\t{F_template_seq_string}\t{F_ipd_part_line}\t{F_pw_part_line}\t{R_template_seq_string}\t{R_ipd_part_line}\t{R_pw_part_line}\n"
     return output_cpg_ZMW_line
 #
@@ -925,38 +927,48 @@ def Sum_Subreads_ZMW(ZMW_dict_Feature, scaleFlag=True):
 
         for read in ZMW_dict_Feature[strand]:
             # Create the arrays for the current read and append them to the list
-            ipd_arrays.append(np.array(ZMW_dict_Feature[strand][read]))
-            pw_arrays.append(np.array(ZMW_dict_Feature[strand][read]))
-            seqstring_arrays.append(ZMW_dict_Feature[strand][read])
-            #
+            seqstring_arrays.append(ZMW_dict_Feature[strand][read][0])
+            ipd_arrays.append(np.array(ZMW_dict_Feature[strand][read][1]))
+            pw_arrays.append(np.array(ZMW_dict_Feature[strand][read][2]))
         #
         # now, all the reads are v-stacked
-        ccs_seq = get_ccs(seqstring_arrays)
+        out_ccs_seq = get_ccs(seqstring_arrays)
         # notes:  [1,2,3]
         #.........[4,5,6], then mean is [2.5,3.5,4.5] by column
         # if [1,2,3], then keep the original value [1,2,3]          
-        # ipd
-        MEAN_ipd_array = np.mean(ipd_arrays, axis = 0, keepdims = True)
-        STD_ipd_array = np.std(ipd_arrays, axis = 0, keepdims = True)
-        # pw
-        MEAN_pw_array = np.mean(pw_arrays, axis = 0, keepdims = True)
-        STD_pw_array = np.std(pw_arrays, axis = 0, keepdims = True)
+        #
+        # take the mean for ipd and pw 
+        ccs_ipd_array = np.mean(ipd_arrays, axis = 0, keepdims = True)
+        ccs_pw_array = np.mean(pw_arrays, axis = 0, keepdims = True)
         #
         if scaleFlag:
-            ccs_ipd_array = (MEAN_ipd_array - MEAN_ipd_array) / STD_ipd_array
-            ccs_pw_array = (MEAN_pw_array - MEAN_pw_array) / STD_pw_array
+            MEAN_ipd_array = np.mean(ccs_ipd_array)
+            MEAN_pw_array = np.mean(ccs_pw_array)
+            STD_ipd_array = np.std(MEAN_ipd_array)
+            STD_pw_array = np.std(MEAN_pw_array)
+
+            if STD_ipd_array != 0:
+                out_ccs_ipd_array = (ccs_ipd_array - MEAN_ipd_array) / STD_ipd_array
+            else:
+                out_ccs_ipd_array = ccs_ipd_array
+
+            if STD_pw_array != 0:
+                out_ccs_pw_array = (ccs_pw_array - MEAN_pw_array) / STD_pw_array
+            else:
+                out_ccs_pw_array = ccs_pw_array
+        #
         else:
-            ccs_ipd_array = MEAN_ipd_array
-            ccs_pw_array = MEAN_pw_array
+            out_ccs_ipd_array = ccs_ipd_array
+            out_ccs_pw_array = ccs_pw_array
         #
         if strand == 'F':
-            Returned_zmw_features[0] = ccs_seq
-            Returned_zmw_features[1] = ccs_ipd_array
-            Returned_zmw_features[2] = ccs_pw_array
+            Returned_zmw_features[0] = out_ccs_seq
+            Returned_zmw_features[1] = out_ccs_ipd_array
+            Returned_zmw_features[2] = out_ccs_pw_array
         if strand == 'R':
-            Returned_zmw_features[3] = ccs_seq
-            Returned_zmw_features[4] = ccs_ipd_array
-            Returned_zmw_features[5] = ccs_pw_array
+            Returned_zmw_features[3] = out_ccs_seq
+            Returned_zmw_features[4] = out_ccs_ipd_array
+            Returned_zmw_features[5] = out_ccs_pw_array
         #
     return Returned_zmw_features
 #
