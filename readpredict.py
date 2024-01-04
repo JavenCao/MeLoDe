@@ -133,14 +133,9 @@ else:
     pass
 #
 #
-# double-checked on Thu Dec 28 14:54:43 CST 2023
-# 2024-01-03, checking
 def TOP_HiFiReadsFeature(Topbam=bamf, outfile=outfile, minsubdep=minsubdep, maxsubdep=maxsubdep, R=R, scaleFlag=scaleFlag):
     """
-        2024-01-03: Template_strand of HiFi read is defined as Top_strand. 
-        
-
-        2023-12-28
+        Freeze,2024-01-04
         INPUT: unaligned BAM file with fi/fp/ri/rp
         OUTPUT: read-level features for each CpG(each line), but without the reference positions
     """
@@ -161,18 +156,28 @@ def TOP_HiFiReadsFeature(Topbam=bamf, outfile=outfile, minsubdep=minsubdep, maxs
             read_SEQ_string = read.query_sequence
             read_query_length = read.query_length
             zmwname = str(read.query_name.split("/")[0]) + "_" + str(read.query_name.split("/")[1])
-            read_is_reverse = False# checked, 2024-01-03
+            read_is_reverse = False
             # ------------------------------------------------------------------------------------------------
             # step2: locate CpG on each read
             # return: [pos1, pos2, pos3, pos4, ... ] in increasing order, pos1, pos2, pos3 are 0-based index, a[pos1] = 'C', a[pos1, pos1+1]='C', a[pos1, pos1+2] = 'CG'
-            cpgstring = 'CG'#5'->3' CG context. 2023-12-28: double-checked, template 5'-3'CpG is readed as 5'-3' CpG on reads by the DNA polymerase. Recall that DNA polymerase moves along in 3'->5' direction on the template, generating the 5'->3' reads.
+            cpgstring = 'CG'#5'->3' CG context. Template 5'-3'CpG is readed as 5'-3' CpG on reads by the DNA polymerase. Recall that DNA polymerase moves along in 3'->5' direction on the template, generating the 5'->3' reads.
             cpgPos_on_read = [m.start() for m in re.finditer(cpgstring, read_SEQ_string)]
+            # ------------------------------------------------------------------------------------------------
+            # remove cpg at the head or tail of a read, which causing out of range index
+            i = 0
+            while i < len(cpgPos_on_read) and cpgPos_on_read[0] < R + 5:
+                i += 1
+            cpgPos_on_read = cpgPos_on_read[i:]
+            i = len(cpgPos_on_read) - 1
+            while i >= 0 and cpgPos_on_read[i] < len(read_SEQ_string) - R - 5:
+                i -= 1
+            cpgPos_on_read = cpgPos_on_read[:i+1]
+            # ------------------------------------------------------------------------------------------------
             if len(cpgPos_on_read) >= 1:
                 for index in range(len(cpgPos_on_read)):
                     pos_on_read = cpgPos_on_read[index]
-                    # 2024-01-03, checked! collect read level features
+                    # collect read level features
                     HiFiread_com_template_seq, HiFiread_com_template_ipd_list, HiFiread_com_template_pw_list, HiFiread_template_seq, HiFiread_template_ipd_list, HiFiread_template_pw_list = HiFiRead_cpg_K_Feature(pos_on_read, read_is_reverse, read_query_length, read_SEQ_string, read_fi_list, read_fp_list, read_ri_list, read_rp_list, scaleFlag)
-                    #
                     # format line parts
                     F_template_seq_string = "".join(HiFiread_template_seq)
                     F_ipd_part_line = ",".join(map(str, HiFiread_template_ipd_list))
@@ -194,10 +199,10 @@ def TOP_HiFiReadsFeature(Topbam=bamf, outfile=outfile, minsubdep=minsubdep, maxs
 #
 def TOP_HiFiReadsMeth(Topbam, modTopbam, minsubdep, maxsubdep, R, scaleFlag, KiFlag, loaded_model):
     """
-    2024-01-03,2023-12-27,2023-12-28
+    Freeze with bug for ML tag,2024-01-04
         INPUT: Topbam: the original unaligned HiFi Bam file with fi/fp/ri/rp signals
         OUTPUT: modTopbam: modification called bam file tagged by MM,ML. And the fi/fp/ri/rp signals can be kept or removed according to KiFlag.
-        Compared with def Aligned_HiFiReadsMeth, the input Topbam file is unmapped/unaligned HiFi reads.        
+        Compared with def Aligned_HiFiReadsMeth, the input Topbam file is unmapped/unaligned HiFi reads.
         So, we don't need to decode CIGAR string to locate CpG positions on a read, but using python string function
     """
     output_reads = []
@@ -244,22 +249,13 @@ def TOP_HiFiReadsMeth(Topbam, modTopbam, minsubdep, maxsubdep, R, scaleFlag, KiF
                     # add X_mat_cpg to the X_reads
                     X_reads[index] = X_mat_cpg
                 predictions_list = read_Meth_prediction(X_reads, loaded_model)
-                # (1) ML tag
+                #
+                # ------------------------------------------------------------------------------------------------
+                # (1) ML:B:C,scaled-probabilities, for example: 'ML:B:C,204,89,26,130', currently is 'ML:B:i,204,89,26,130'
                 MLtag_value = array.array('i',(predictions_list * 256).astype(int))
                 MLtag_tuple = ("ML", MLtag_value)
                 # (2) MM tag
-                top_strand = read_SEQ_string
-                leadingcpg_pos = cpgPos_on_read[0]
-                seq_0_lcpg = top_strand[0:leadingcpg_pos]
-                count_0_lcpg = seq_0_lcpg.count('C')
-                MMtag_value = str(count_0_lcpg)
-                for c1, c2 in zip(cpgPos_on_read[::2], cpgPos_on_read[1::2]):
-                    c1_pos_on_read = c1
-                    c2_pos_on_read = c2
-                    seq_c1_c2 = top_strand[c1_pos_on_read:c2_pos_on_read]
-                    count_c1_c2 = seq_c1_c2.count('C') - 1 # c1 was counted in the last round
-                    MMtag_value = MMtag_value + "," + str(count_c1_c2)
-                # MMtag_tuple = ("MM","C+m,"+MMtag_value+";",'Z')
+                MMtag_value = create_MMtag_value(top_strand=read_SEQ_string, motif='CG', umodifiedbase='C')
                 MMtag_tuple = ("MM","C+m,"+MMtag_value+";")
                 # (3) kinetics tag keep or remove
                 if  KiFlag == "remove":
@@ -288,7 +284,6 @@ def TOP_HiFiReadsMeth(Topbam, modTopbam, minsubdep, maxsubdep, R, scaleFlag, KiF
 #
 def Aligned_HiFiReadsFeature(inbamf, cglist, outfile, minsubdep, maxsubdep, mappingQ, R, scaleFlag):
     """
-        2023-12-28
         INPUT: aligned BAM file with fi/fp/ri/rp
         OUTPUT: read-level features for each CpG with the reference positions
     """
@@ -323,6 +318,20 @@ def Aligned_HiFiReadsFeature(inbamf, cglist, outfile, minsubdep, maxsubdep, mapp
                     # step2: locate genome CpG to each read
                     # return: ["cpg1":pos1,"cpg2":pos2 ... ]
                     cpgPos_on_read = locate_cpgPos_on_SEQ(aln_ref_chr = aln_ref_chr, aln_ref_start = aln_ref_start, read_cigar = read_cigartuples, overlapping_cpg = overlapping_cpg)
+                    # ----------------------------------------------------------------------------------------
+                    # heading or tailing removing
+                    cpgPos_on_read_keys = list(cpgPos_on_read)
+                    for key in cpgPos_on_read_keys:
+                        if cpgPos_on_read[key] < (R+5):
+                            del cpgPos_on_read[key]
+                        else:
+                            break
+                    for key in reversed(cpgPos_on_read_keys):
+                        if cpgPos_on_read[key] > len(read_SEQ_string) - R - 5:
+                            del cpgPos_on_read[key]
+                        else:
+                            break
+                    # ----------------------------------------------------------------------------------------
                     if len(cpgPos_on_read) >= 1:
                         all_cpgs = list(cpgPos_on_read)
                         for index in range(len(cpgPos_on_read)):
@@ -354,9 +363,9 @@ def Aligned_HiFiReadsFeature(inbamf, cglist, outfile, minsubdep, maxsubdep, mapp
 # Coordinates in pysam are always 0-based (following the python convention)
 def Aligned_HiFiReadsMeth(bamf, cglist, outputp, outputType, minsubdep, maxsubdep, mappingQ, R, scaleFlag, KiFlag, loaded_model):
     """
-       2023-12-26
-       INPUT:  aligned BAM file with fi/fp/ri/rp tags
-       OUTPUT: when outputType == "ModBam": aligned BAM file with modification status coding in MM and ML tags, with/without fi/fp/ri/rp tags(KiFlag="move","keep")
+    Freeze with bug for ML tag,2024-01-04
+        INPUT:  aligned BAM file with fi/fp/ri/rp tags
+        OUTPUT: when outputType == "ModBam": aligned BAM file with modification status coding in MM and ML tags, with/without fi/fp/ri/rp tags(KiFlag="move","keep")
                when outputType == "MoleculeLevel": Single molecule level prediction
     """
     samfile = pysam.AlignmentFile(bamf, "rb")
@@ -373,7 +382,6 @@ def Aligned_HiFiReadsMeth(bamf, cglist, outputp, outputType, minsubdep, maxsubde
         fout = gzip.open(outfile, "wb")
     # ---------
     #
-    # winsize = 2 * R + 1
     # prediction process, by read by cpg.
     for read in samfile.fetch():
         if (not read.is_secondary) and (not read.is_supplementary) and (read.mapping_quality >= mappingQ) and (Matching_ratio_Fun(read) >= 0.85):
@@ -403,6 +411,20 @@ def Aligned_HiFiReadsMeth(bamf, cglist, outputp, outputType, minsubdep, maxsubde
                     # step2: locate genome CpG to each read
                     # return: ["cpg1":pos1,"cpg2":pos2 ... ]
                     cpgPos_on_read = locate_cpgPos_on_SEQ(aln_ref_chr = aln_ref_chr, aln_ref_start = aln_ref_start, read_cigar = read_cigartuples, overlapping_cpg = overlapping_cpg)
+                    # ----------------------------------------------------------------------------------------
+                    # heading or tailing removing
+                    cpgPos_on_read_keys = list(cpgPos_on_read)
+                    for key in cpgPos_on_read_keys:
+                        if cpgPos_on_read[key] < (R+5):
+                            del cpgPos_on_read[key]
+                        else:
+                            break
+                    for key in reversed(cpgPos_on_read_keys):
+                        if cpgPos_on_read[key] > len(read_SEQ_string) - R - 5:
+                            del cpgPos_on_read[key]
+                        else:
+                            break
+                    # ----------------------------------------------------------------------------------------                          
                     if len(cpgPos_on_read) >= 1:
                         X_reads = np.empty((len(cpgPos_on_read), 13, 2*R+1))
                         all_cpgs = list(cpgPos_on_read)
@@ -418,6 +440,9 @@ def Aligned_HiFiReadsMeth(bamf, cglist, outputp, outputType, minsubdep, maxsubde
                         #
                         # make predictions for the current read
                         predictions_list = read_Meth_prediction(X_reads, loaded_model)
+                        ###########################
+                        #### write out process ####
+                        ###########################
                         if outputType == "MoleculeLevel":
                             Chr_info, Pos_info = zip(*[cpg.split("_") for cpg in all_cpgs])
                             common_info = [zmwname, total_subreads_dep, haplotype, haplotype_block, '+']
@@ -440,24 +465,13 @@ def Aligned_HiFiReadsMeth(bamf, cglist, outputp, outputType, minsubdep, maxsubde
                         if outputType == "ModBam":
                             # (1)
                             MLtag_value = array.array('i',(predictions_list * 256).astype(int))
-                            # MLtag_tuple = ("ML", MLtag_value, "B")
                             MLtag_tuple = ("ML", MLtag_value)
                             # (2) MM tag
                             if read_is_reverse:
                                 top_strand = str_complementary(read_SEQ_string[::-1])
                             else:
                                 top_strand = read_SEQ_string
-                            leadingcpg_pos = cpgPos_on_read[all_cpgs[0]]
-                            seq_0_lcpg = top_strand[0:leadingcpg_pos]
-                            count_0_lcpg = seq_0_lcpg.count('C')
-                            MMtag_value = str(count_0_lcpg)
-                            for c1, c2 in zip(list(cpgPos_on_read.keys())[::2], list(cpgPos_on_read.keys())[1::2]):
-                                c1_pos_on_read = cpgPos_on_read[c1]
-                                c2_pos_on_read = cpgPos_on_read[c2]
-                                seq_c1_c2 = top_strand[c1_pos_on_read:c2_pos_on_read]
-                                count_c1_c2 = seq_c1_c2.count('C') - 1 # c1 was counted in the last round
-                                MMtag_value = MMtag_value + "," + str(count_c1_c2)
-                            # MMtag_tuple = ("MM","C+m,"+MMtag_value+";",'Z')
+                            MMtag_value = create_MMtag_value(top_strand, motif='CG', umodifiedbase='C')
                             MMtag_tuple = ("MM","C+m,"+MMtag_value+";")
                             # (3)
                             if  KiFlag == "remove":
@@ -480,38 +494,11 @@ def Aligned_HiFiReadsMeth(bamf, cglist, outputp, outputType, minsubdep, maxsubde
                                 for processed_read in output_reads:
                                     outsamfile.write(processed_read)
     return 0
-#
-#
-def getliststat(inputlist):
-    return (np.array(inputlist)).min(),(np.array(inputlist)).mean(),(np.array(inputlist)).std()
-#
-#
-def getkineticswin(inputKlist, scaleFlag=True):
-    if scaleFlag:
-        Kmin, Kmean, Kstd = getliststat(inputKlist)
-        Kwinlist = np.round(((np.array(inputKlist)) - Kmean) / Kstd, 2)
-        return Kwinlist
-    else:
-        return inputKlist
-#
-#
-# 2023-12-11: read
-def Matching_ratio_Fun(read):
-    TotalLen = 0
-    Matching_len = 0
-    cigar = read.cigartuples
-    for Tuple in cigar:
-        op, count = Tuple
-        # 0:M, 1:I, 4:S, 7:=, 8:X ||||||||||||| sum of "M/I/S/=/X" is the SEQ length
-        if ((op == 0) or (op == 1) or (op == 4) or (op == 7) or (op == 8)):
-            TotalLen = TotalLen + count
-            if ((op == 0) or (op == 7) or (op == 8)):
-                Matching_len = Matching_len + count
-    Matching_ratio = float(Matching_len / TotalLen)
-    return Matching_ratio
+
 #
 #
 def find_overlapping_cpg(cglist_sort_increasing, Ref_chr, Ref_start, Ref_end):
+    """Freeze,2024-01-04"""
     chromosome_dict = {}
     overlapping_cpg = []
     # Create dictionary for quick chromosome lookup
@@ -541,10 +528,9 @@ def find_overlapping_cpg(cglist_sort_increasing, Ref_chr, Ref_start, Ref_end):
     return overlapping_cpg
 #
 #
-# needs to simplify later, 2023-12-26
-# update: 2020-01-02, name change only
 def locate_cpgPos_on_SEQ(aln_ref_chr, aln_ref_start, read_cigar, overlapping_cpg):
     """
+    Freeze,2024-01-04
     FUN:locate ref_cpg_position on the read by decoding the cigar_string
     INPUT:overlapping_cpg = ["chr_C1","chr_C2","chr_C3" ... ]
     RETURN:cpgPos_on_read_dict = ["chr_C1":pos1,"chr_C2":pos2 ... ] on this read. |-Here,pos1,pos2...are 0-based on the read-|
@@ -592,8 +578,8 @@ def locate_cpgPos_on_SEQ(aln_ref_chr, aln_ref_start, read_cigar, overlapping_cpg
     return cpgPos_on_read_dict
 #
 #
-# 2023-12-25:update
-def Format_closedZMW(F_template_seq, F_ipdlist, F_pwlist, R_template_seq, R_ipdlist, R_pwlist,npasses):
+def Format_closedZMW(F_template_seq, F_ipdlist, F_pwlist, R_template_seq, R_ipdlist, R_pwlist, npasses):
+    """Freeze,2024-01-04"""
     F_seq_context = list(F_template_seq)
     F_ipdlist = np.asarray(F_ipdlist, dtype=np.float16)
     F_pwlist = np.asarray(F_pwlist, dtype=np.float16)
@@ -602,7 +588,7 @@ def Format_closedZMW(F_template_seq, F_ipdlist, F_pwlist, R_template_seq, R_ipdl
     R_ipdlist = np.asarray(R_ipdlist, dtype=np.float16)
     R_pwlist = np.asarray(R_pwlist, dtype=np.float16)
     #
-    total_win_size = len(F_ipdlist)  # R=10, total_win_size = 21
+    total_win_size = len(F_ipdlist)
     npasses_list = np.full(total_win_size, npasses)
     #
     F_seq_mat_array = np.zeros((4, total_win_size))
@@ -615,25 +601,56 @@ def Format_closedZMW(F_template_seq, F_ipdlist, F_pwlist, R_template_seq, R_ipdl
     mat = np.vstack([F_seq_mat_array, F_ipdlist, F_pwlist, R_seq_mat_array, R_ipdlist, R_pwlist, npasses_list])
     return mat
 #
+def Buildcglist_dict(cgfile, processingChr="whole_genome"):
+    """Freeze,2024-01-04"""
+    cglist_dict = defaultdict(list)
+    with open(cgfile, "r") as fp:
+        for line in fp:
+            div = line.rstrip("\n").split()
+            if processingChr == "whole_genome" or div[0] == processingChr:
+                chromosome = div[0]
+                value = div[0] + "_" + div[1]
+                cglist_dict[chromosome].append(value)
+    # Sort values numerically based on div[1]
+    for chromosome in cglist_dict:
+        cglist_dict[chromosome] = sorted(cglist_dict[chromosome], key=lambda x: int(x.split("_")[1]))
+    return cglist_dict
+#
+def Matching_ratio_Fun(read):
+    """Freeze,2024-01-04"""
+    TotalLen = 0
+    Matching_len = 0
+    cigar = read.cigartuples
+    for Tuple in cigar:
+        op, count = Tuple
+        # 0:M, 1:I, 4:S, 7:=, 8:X ||||||||||||| sum of "M/I/S/=/X" is the SEQ length
+        if ((op == 0) or (op == 1) or (op == 4) or (op == 7) or (op == 8)):
+            TotalLen = TotalLen + count
+            if ((op == 0) or (op == 7) or (op == 8)):
+                Matching_len = Matching_len + count
+    Matching_ratio = float(Matching_len / TotalLen)
+    return Matching_ratio
+#
+def getkineticswin(inputKlist, scaleFlag=True):
+    """Freeze,2024-01-04"""
+    if scaleFlag:
+        Kmin, Kmean, Kstd = getliststat(inputKlist)
+        Kwinlist = np.round(((np.array(inputKlist)) - Kmean) / Kstd, 2)
+        return Kwinlist
+    else:
+        return inputKlist
+#
+def getliststat(inputlist):
+    """Freeze,2024-01-04"""
+    return (np.array(inputlist)).min(),(np.array(inputlist)).mean(),(np.array(inputlist)).std()
 #
 def str_complementary(string_a):
+    """Freeze,2024-01-04"""
     complementary_string_a = string_a.translate(string_a.maketrans("ATCG", "TAGC"))
     return complementary_string_a
 #
-#
-def string_checker(string_a):
-    list_string_a = list(string_a)
-    for index in range(len(list_string_a)):
-        if list_string_a[index] not in ['A', 'T', 'C', 'G']:
-            list_string_a[index] = str(
-                random.sample(['A', 'T', 'C', 'G'], 1)[0])
-            continue
-    checkedstring = "".join(list_string_a)
-    return checkedstring
-#
-#
 def read_Meth_prediction(X_reads, loaded_model):
-    """return np.array for each CpG on the reads"""
+    """Freeze,2024-01-04"""
     X_testing = np.transpose(X_reads, (0, 2, 1))
     predictions = loaded_model.predict(X_testing,batch_size=10)
     predictions_list = predictions.flatten()
@@ -642,7 +659,7 @@ def read_Meth_prediction(X_reads, loaded_model):
 #
 def HiFiRead_cpg_K_Feature(pos_on_read, read_is_reverse, read_query_length, read_SEQ_string, read_fi_list, read_fp_list, read_ri_list, read_rp_list, scaleFlag):
     """
-    2023-12-25:
+    Freeze,2024-01-04
     Related knowledge: DNA polymerase moves along in 3'->5' direction on the template, generating the 5'->3' reads.
     Return: (1) sequence context from the template of Ref_Forward_strand(should be in 3'->5', on reads is 5'->3') + IPD/PW on the reads while syning the template(should be in F_ipd_list and F_pw_list)
             (2) sequence context from the template of Ref_Reverse_strand + IPD/PW on the reads while syning the template(should be in R_ipd_list and R_pw_list)
@@ -657,30 +674,27 @@ def HiFiRead_cpg_K_Feature(pos_on_read, read_is_reverse, read_query_length, read
         F_ipd_list = getkineticswin(inputKlist=read_fi_list[L_RefFC_on_f_list:R_RefFC_on_f_list],scaleFlag=scaleFlag)
         F_pw_list = getkineticswin(inputKlist=read_fp_list[L_RefFC_on_f_list:R_RefFC_on_f_list],scaleFlag=scaleFlag)
         F_template_seq = (read_SEQ_string[pos_on_read-R:pos_on_read+R+1])[::-1]
-        #
         # (2)
         # For subreads mapped to Ref_F_strand, which carrying information when syn the complementary R_strand, key 'R' #
         # information is stored in ri, rp tags
         RefRC_on_r_list = pos_on_read + 1
-        L_RefRC_on_r_list = RefRC_on_r_list - R - 1
-        R_RefRC_on_r_list = RefRC_on_r_list + R
+        L_RefRC_on_r_list = RefRC_on_r_list - R
+        R_RefRC_on_r_list = RefRC_on_r_list + R + 1
         R_ipd_list = getkineticswin(inputKlist=read_ri_list[L_RefRC_on_r_list:R_RefRC_on_r_list],scaleFlag=scaleFlag)
         R_pw_list = getkineticswin(inputKlist=read_rp_list[L_RefRC_on_r_list:R_RefRC_on_r_list],scaleFlag=scaleFlag)
         R_template_seq = (str_complementary(read_SEQ_string))[L_RefRC_on_r_list:R_RefRC_on_r_list]
         R_ipd_list = R_ipd_list[::-1]
         R_pw_list = R_pw_list[::-1]
-
     else:# this hifi read aligned to Ref_F_strand
         # (1)
         # For subreads mapped to Ref_F_strand, which carrying information when syn the complementary R_strand, key 'R' #
         # information is stored in fi, fp tags
         RefRC_on_f_list = pos_on_read + 1
-        L_RefRC_on_f_list = RefRC_on_f_list - R - 1
-        R_RefRC_on_f_list = RefRC_on_f_list + R
+        L_RefRC_on_f_list = RefRC_on_f_list - R
+        R_RefRC_on_f_list = RefRC_on_f_list + R + 1
         R_ipd_list = getkineticswin(inputKlist=read_fi_list[L_RefRC_on_f_list:R_RefRC_on_f_list],scaleFlag=scaleFlag)
         R_pw_list = getkineticswin(inputKlist=read_fp_list[L_RefRC_on_f_list:R_RefRC_on_f_list],scaleFlag=scaleFlag)
         R_template_seq = (str_complementary(read_SEQ_string))[L_RefRC_on_f_list:R_RefRC_on_f_list]
-        #
         # (2)
         # For subreads mapped to Ref_R_strand, which carrying information when syn the complementary F_strand, key 'F' #
         # information is stored in ri, rp tags
@@ -695,47 +709,7 @@ def HiFiRead_cpg_K_Feature(pos_on_read, read_is_reverse, read_query_length, read
     return F_template_seq, F_ipd_list, F_pw_list, R_template_seq, R_ipd_list, R_pw_list
 #
 #
-def Buildcglist_dict(cgfile, processingChr="whole_genome"):
-    cglist_dict = defaultdict(list)
-    with open(cgfile, "r") as fp:
-        for line in fp:
-            div = line.rstrip("\n").split()
-            if processingChr == "whole_genome" or div[0] == processingChr:
-                chromosome = div[0]
-                value = div[0] + "_" + div[1]
-                cglist_dict[chromosome].append(value)
-    # Sort values numerically based on div[1]
-    for chromosome in cglist_dict:
-        cglist_dict[chromosome] = sorted(cglist_dict[chromosome], key=lambda x: int(x.split("_")[1]))
-    return cglist_dict
-#
-#
-def Matching_ratio_Fun(read):
-    TotalLen = 0
-    Matching_len = 0
-    cigar = read.cigartuples
-    for Tuple in cigar:
-        op, count = Tuple
-        # 0:M, 1:I, 4:S, 7:=, 8:X ||||||||||||| sum of "M/I/S/=/X" is the SEQ length
-        if ((op == 0) or (op == 1) or (op == 4) or (op == 7) or (op == 8)):
-            TotalLen = TotalLen + count
-            if ((op == 0) or (op == 7) or (op == 8)):
-                Matching_len = Matching_len + count
-    Matching_ratio = float(Matching_len / TotalLen)
-    return Matching_ratio
-#
-#
-def getliststat(inputlist):
-    return (np.array(inputlist)).min(),(np.array(inputlist)).mean(),(np.array(inputlist)).std()
-#
-#
-def getkineticswin(inputKlist, scaleFlag=True):
-    if scaleFlag:
-        Kmin, Kmean, Kstd = getliststat(inputKlist)
-        Kwinlist = np.round(((np.array(inputKlist)) - Kmean) / Kstd, 2)
-        return Kwinlist
-    else:
-        return inputKlist
+
 #
 #
 # 2023-12-29: Aligned subreads feature extraction
@@ -997,6 +971,57 @@ def get_ccs(seqstring_arrays):
         selected_char = random.choice(most_common_chars)
         consensus_sequence += selected_char
     return consensus_sequence
+
+
+
+
+
+def create_MMtag_value(top_strand, motif='CG', umodifiedbase='C'):
+    """
+    Freeze,2024-01-04
+    INPUT: top_strand is the 5'->3' raw read from the sequencer machine.
+    Please be noted, it is NOT SEQ from alignment file, NOT TEMPLATE STRAND(3'->5',5'->3')
+    Below is an example:
+        Read  AGTCTAGACTCCGTAATTACTCGCCTAG...
+        C        1    2 34       5 6 78
+        CpG              *         *
+
+        MM:Z:C+m,3,1,...   # CpG sites are at C #4 (1+3) and #6 (1+3+1+1)
+        ML:B:C,249,4,...   # probability of methylation at the first CpG is in [249/256,250/256); second CpG is in [4/256,5/256).
+    """
+    cpgPos_on_read = [m.start() for m in re.finditer(motif, top_strand)]
+    leadingcpg_pos = cpgPos_on_read[0]
+    seq_0_lcpg = top_strand[0:leadingcpg_pos]
+    count_0_lcpg = seq_0_lcpg.count(umodifiedbase)
+    MMtag_value = str(count_0_lcpg)
+    for c1, c2 in zip(cpgPos_on_read[::2], cpgPos_on_read[1::2]):
+        c1_pos_on_read = c1
+        c2_pos_on_read = c2
+        seq_c1_c2 = top_strand[c1_pos_on_read:c2_pos_on_read]
+        count_c1_c2 = seq_c1_c2.count('C') - 1 # c1 was counted in the last round
+        MMtag_value = MMtag_value + "," + str(count_c1_c2)
+    return MMtag_value
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #
 ##
