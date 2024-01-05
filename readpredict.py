@@ -425,7 +425,7 @@ def Aligned_HiFiReadsMeth(bamf, cglist, outputp, outputType, minsubdep, maxsubde
                         else:
                             break
                     # cpgPos_on_top_strand(5'->3'), still in the order of ["cpg1":top_pos1, "cpg2":top_pos2,]. such as ['chr1_100':200, 'chr1_1111':20]
-                    cpgPos_on_top_strand = Con_posSEQ_to_posRead(read_is_reverse = read_is_reverse, read_query_length = read_query_length, pos_on_SEQ_dict = cpgPos_on_SEQ)
+                    cpgPos_on_top_strand = Con_posSEQ_to_posRead(read_is_reverse = read_is_reverse, read_length = read_query_length, pos_on_SEQ_dict = cpgPos_on_SEQ)
                     # ----------------------------------------------------------------------------------------                          
                     if len(cpgPos_on_SEQ) >= 1:
                         X_reads = np.empty((len(cpgPos_on_SEQ), 13, 2*R+1))
@@ -1017,6 +1017,7 @@ def Con_posSEQ_to_posRead(read_is_reverse, read_length, pos_on_SEQ_dict):
         pos_on_top_strand = pos_on_SEQ_dict
         return pos_on_top_strand
     else:
+        pos_on_top_strand = {}
         keys = pos_on_SEQ_dict.keys()
         for cpg in keys:
             pos_on_SEQ = pos_on_SEQ_dict[cpg]
