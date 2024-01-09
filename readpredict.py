@@ -363,7 +363,7 @@ def Aligned_HiFiReadsFeature(inbamf, cglist, outfile, minsubdep, maxsubdep, mapp
 # Coordinates in pysam are always 0-based (following the python convention)
 def Aligned_HiFiReadsMeth(bamf, cglist, outputp, outputType, minsubdep, maxsubdep, mappingQ, R, scaleFlag, KiFlag, loaded_model):
     """
-    Freeze with bug for ML tag,2024-01-04,2024-01-05
+    Freeze with bug for ML tag,2024-01-04,2024-01-05,2024-01-09
         INPUT:  aligned BAM file with fi/fp/ri/rp tags
         OUTPUT: when outputType == "ModBam": aligned BAM file with modification status coding in MM and ML tags, with/without fi/fp/ri/rp tags(KiFlag="move","keep")
                when outputType == "MoleculeLevel": Single molecule level prediction
@@ -407,6 +407,7 @@ def Aligned_HiFiReadsMeth(bamf, cglist, outputp, outputType, minsubdep, maxsubde
                     read_cigartuples = read.cigartuples
                     haplotype, haplotype_block = (str(read.get_tag("HP")), str(read.get_tag("PS"))) if read.has_tag("HP") else ("X", "X")# HP:i:2   PS:i:11457
                     zmwname = str(read.query_name.split("/")[0]) + "_" + str(read.query_name.split("/")[1])
+                    zmwType = "H"# Hifi
                     # ------------------------------------------------------------------------------------------------
                     # step2: locate genome CpG to each read
                     # return: ["cpg1":pos1,"cpg2":pos2 ... ]
@@ -447,7 +448,7 @@ def Aligned_HiFiReadsMeth(bamf, cglist, outputp, outputType, minsubdep, maxsubde
                         ###########################
                         if outputType == "MoleculeLevel":
                             Chr_info, Pos_info = zip(*[cpg.split("_") for cpg in all_cpgs])
-                            common_info = [zmwname, total_subreads_dep, haplotype, haplotype_block, '+']
+                            common_info = [zmwname, zmwType, total_subreads_dep, haplotype, haplotype_block, '+']
                             ZMW_info, zmwdep_info, Hap_info, HapBlk_info, strand_sign = [[info] * len(cpgPos_on_SEQ) for info in common_info]
                             predictions_bi = (predictions_list >= 0.5).astype(int)
                             df_testing_pre = pd.DataFrame(
@@ -455,6 +456,7 @@ def Aligned_HiFiReadsMeth(bamf, cglist, outputp, outputType, minsubdep, maxsubde
                                     "Chr": Chr_info,
                                     "Pos1": Pos_info,
                                     "ZMWid": ZMW_info,
+                                    "ZMWtype": zmwType,
                                     "subdepth": zmwdep_info,
                                     "Hap": Hap_info,
                                     "HapBlk": HapBlk_info,
