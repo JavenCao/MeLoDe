@@ -322,12 +322,12 @@ def Aligned_HiFiReadsFeature(inbamf, cglist, outfile, minsubdep, maxsubdep, mapp
                     # heading or tailing removing
                     cpgPos_on_read_keys = list(cpgPos_on_read)
                     for key in cpgPos_on_read_keys:
-                        if cpgPos_on_read[key] < (R+5):
+                        if cpgPos_on_read[key] < (R+50):
                             del cpgPos_on_read[key]
                         else:
                             break
                     for key in reversed(cpgPos_on_read_keys):
-                        if cpgPos_on_read[key] > len(read_SEQ_string) - R - 5:
+                        if cpgPos_on_read[key] > len(read_SEQ_string) - R - 50:
                             del cpgPos_on_read[key]
                         else:
                             break
@@ -416,12 +416,12 @@ def Aligned_HiFiReadsMeth(bamf, cglist, outputp, outputType, minsubdep, maxsubde
                     # heading or tailing removing
                     cpgPos_on_SEQ_keys = list(cpgPos_on_SEQ)
                     for key in cpgPos_on_SEQ_keys:
-                        if cpgPos_on_SEQ[key] < (R+5):
+                        if cpgPos_on_SEQ[key] < (R+50):
                             del cpgPos_on_SEQ[key]
                         else:
                             break
                     for key in reversed(cpgPos_on_SEQ_keys):
-                        if cpgPos_on_SEQ[key] > len(read_SEQ_string) - R - 5:
+                        if cpgPos_on_SEQ[key] > len(read_SEQ_string) - R - 50:
                             del cpgPos_on_SEQ[key]
                         else:
                             break
