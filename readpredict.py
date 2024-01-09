@@ -133,7 +133,7 @@ else:
     pass
 #
 #
-def TOP_HiFiReadsFeature(Topbam=bamf, outfile=outfile, minsubdep=minsubdep, maxsubdep=maxsubdep, R=R, scaleFlag=scaleFlag):
+def TOP_HiFiReadsFeature(Topbam, outfile, minsubdep, maxsubdep, R, scaleFlag):
     """
         Freeze,2024-01-04
         INPUT: unaligned BAM file with fi/fp/ri/rp
@@ -177,7 +177,7 @@ def TOP_HiFiReadsFeature(Topbam=bamf, outfile=outfile, minsubdep=minsubdep, maxs
                 for index in range(len(cpgPos_on_read)):
                     pos_on_read = cpgPos_on_read[index]
                     # collect read level features
-                    HiFiread_template_seq, HiFiread_template_ipd_list, HiFiread_template_pw_list, HiFiread_com_template_seq, HiFiread_com_template_ipd_list, HiFiread_com_template_pw_list = HiFiRead_cpg_K_Feature(pos_on_read, read_is_reverse, read_query_length, read_SEQ_string, read_fi_list, read_fp_list, read_ri_list, read_rp_list, scaleFlag)
+                    HiFiread_template_seq, HiFiread_template_ipd_list, HiFiread_template_pw_list, HiFiread_com_template_seq, HiFiread_com_template_ipd_list, HiFiread_com_template_pw_list = HiFiRead_cpg_K_Feature(pos_on_read, read_is_reverse, R, read_query_length, read_SEQ_string, read_fi_list, read_fp_list, read_ri_list, read_rp_list, scaleFlag)
                     # format line parts
                     F_template_seq_string = "".join(HiFiread_template_seq)
                     F_ipd_part_line = ",".join(map(str, HiFiread_template_ipd_list))
@@ -243,7 +243,7 @@ def TOP_HiFiReadsMeth(Topbam, modTopbam, minsubdep, maxsubdep, R, scaleFlag, KiF
                 for index in range(len(cpgPos_on_read)):
                     pos_on_read = cpgPos_on_read[index]
                     # collect read level features
-                    HiFiread_template_seq, HiFiread_template_ipd_list, HiFiread_template_pw_list, HiFiread_com_template_seq, HiFiread_com_template_ipd_list, HiFiread_com_template_pw_list = HiFiRead_cpg_K_Feature(pos_on_read, read_is_reverse, read_query_length, read_SEQ_string, read_fi_list, read_fp_list, read_ri_list, read_rp_list, scaleFlag)
+                    HiFiread_template_seq, HiFiread_template_ipd_list, HiFiread_template_pw_list, HiFiread_com_template_seq, HiFiread_com_template_ipd_list, HiFiread_com_template_pw_list = HiFiRead_cpg_K_Feature(pos_on_read, read_is_reverse, R, read_query_length, read_SEQ_string, read_fi_list, read_fp_list, read_ri_list, read_rp_list, scaleFlag)
                     # construct the feature matrix
                     X_mat_cpg = Format_closedZMW(F_template_seq = HiFiread_template_seq, F_ipdlist = HiFiread_template_ipd_list, F_pwlist = HiFiread_template_pw_list, R_template_seq = HiFiread_com_template_seq, R_ipdlist = HiFiread_com_template_ipd_list, R_pwlist = HiFiread_com_template_pw_list, npasses = total_subreads_dep)
                     # add X_mat_cpg to the X_reads
@@ -340,7 +340,7 @@ def Aligned_HiFiReadsFeature(inbamf, cglist, outfile, minsubdep, maxsubdep, mapp
                             pos_on_read = cpgPos_on_read[cpg]
                             #
                             # collect read level features
-                            F_template_seq, F_ipd_list, F_pw_list, R_template_seq, R_ipd_list, R_pw_list = HiFiRead_cpg_K_Feature(pos_on_read, read_is_reverse, read_query_length, read_SEQ_string, read_fi_list, read_fp_list, read_ri_list, read_rp_list, scaleFlag)
+                            F_template_seq, F_ipd_list, F_pw_list, R_template_seq, R_ipd_list, R_pw_list = HiFiRead_cpg_K_Feature(pos_on_read, read_is_reverse, R, read_query_length, read_SEQ_string, read_fi_list, read_fp_list, read_ri_list, read_rp_list, scaleFlag)
                             #
                             F_template_seq_string = "".join(F_template_seq)
                             F_ipd_part_line = ",".join(map(str, F_ipd_list))
@@ -435,7 +435,7 @@ def Aligned_HiFiReadsMeth(bamf, cglist, outputp, outputType, minsubdep, maxsubde
                             cpg = all_cpgs[index]
                             pos_on_SEQ = cpgPos_on_SEQ[cpg]
                             # collect read level features
-                            F_template_seq, F_ipd_list, F_pw_list, R_template_seq, R_ipd_list, R_pw_list = HiFiRead_cpg_K_Feature(pos_on_SEQ, read_is_reverse, read_query_length, read_SEQ_string, read_fi_list, read_fp_list, read_ri_list, read_rp_list, scaleFlag)
+                            F_template_seq, F_ipd_list, F_pw_list, R_template_seq, R_ipd_list, R_pw_list = HiFiRead_cpg_K_Feature(pos_on_SEQ, read_is_reverse, R, read_query_length, read_SEQ_string, read_fi_list, read_fp_list, read_ri_list, read_rp_list, scaleFlag)
                             # construct the feature matrix
                             X_mat_cpg = Format_closedZMW(F_template_seq = F_template_seq, F_ipdlist = F_ipd_list, F_pwlist = F_pw_list, R_template_seq = R_template_seq, R_ipdlist = R_ipd_list, R_pwlist = R_pw_list, npasses = total_subreads_dep)
                             # add X_mat_cpg to the X_reads
@@ -665,7 +665,7 @@ def read_Meth_prediction(X_reads, loaded_model):
     return predictions_list
 #
 #
-def HiFiRead_cpg_K_Feature(pos_on_SEQ, read_is_reverse, read_query_length, read_SEQ_string, read_fi_list, read_fp_list, read_ri_list, read_rp_list, scaleFlag):
+def HiFiRead_cpg_K_Feature(pos_on_SEQ, read_is_reverse, R, read_query_length, read_SEQ_string, read_fi_list, read_fp_list, read_ri_list, read_rp_list, scaleFlag):
     """
     Development,2024-01-09
     Related knowledge: DNA polymerase moves along in 3'->5' direction on the template, generating the 5'->3' reads.
