@@ -165,11 +165,11 @@ def TOP_HiFiReadsFeature(Topbam, outfile, minsubdep, maxsubdep, R, scaleFlag):
             # ------------------------------------------------------------------------------------------------
             # remove cpg at the head or tail of a read, which causing out of range index
             i = 0
-            while i < len(cpgPos_on_read) and cpgPos_on_read[0] < R + 5:
+            while i < len(cpgPos_on_read) and cpgPos_on_read[0] < R + 50:
                 i += 1
             cpgPos_on_read = cpgPos_on_read[i:]
             i = len(cpgPos_on_read) - 1
-            while i >= 0 and cpgPos_on_read[i] < len(read_SEQ_string) - R - 5:
+            while i >= 0 and cpgPos_on_read[i] < len(read_SEQ_string) - R - 50:
                 i -= 1
             cpgPos_on_read = cpgPos_on_read[:i+1]
             # ------------------------------------------------------------------------------------------------
@@ -230,11 +230,11 @@ def TOP_HiFiReadsMeth(Topbam, modTopbam, minsubdep, maxsubdep, R, scaleFlag, KiF
             # ------------------------------------------------------------------------------------------------
             # remove cpg at the head or tail of a read, which causing out of range index
             i = 0
-            while i < len(cpgPos_on_read) and cpgPos_on_read[0] < R + 5:
+            while i < len(cpgPos_on_read) and cpgPos_on_read[0] < R + 50:
                 i += 1
             cpgPos_on_read = cpgPos_on_read[i:]
             i = len(cpgPos_on_read) - 1
-            while i >= 0 and cpgPos_on_read[i] < len(read_SEQ_string) - R - 5:
+            while i >= 0 and cpgPos_on_read[i] < len(read_SEQ_string) - R - 50:
                 i -= 1
             cpgPos_on_read = cpgPos_on_read[:i+1]
             # ------------------------------------------------------------------------------------------------
@@ -758,12 +758,12 @@ def Aligned_subreadsBam_Feature(bamf, cglist, outputp, outputType, mappingQ, R, 
                     # heading or tailing removing
                     cpgPos_on_read_keys = list(cpgPos_on_read)
                     for key in cpgPos_on_read_keys:
-                        if cpgPos_on_read[key] < (R+5):
+                        if cpgPos_on_read[key] < (R+50):
                             del cpgPos_on_read[key]
                         else:
                             break
                     for key in reversed(cpgPos_on_read_keys):
-                        if cpgPos_on_read[key] > len(read_SEQ_string) - R - 5:
+                        if cpgPos_on_read[key] > len(read_SEQ_string) - R - 50:
                             del cpgPos_on_read[key]
                         else:
                             break
