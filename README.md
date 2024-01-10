@@ -24,7 +24,7 @@ Users could train their own *ZMWmeth model* and *Joint-CpG model* for read-level
 
 **ZMWmeth model**
 
-- (Step1 - feature extration)
+- Step1 - feature extration
 
 From unaligned HiFi reads, such as m64284e_230525_074225_hifi.bam you got from the sequencing machine with fi/fp/ri/rp tags:
 
@@ -53,3 +53,7 @@ Each line of cpg_motif.pos is CpG motif coordinates (1-based) on the reference g
         chr1	10471
         chr1	10484
         chr1	10489
+
+- Step2 - Formatting and model training
+
+From the feature files above, model can be trained as follows:
