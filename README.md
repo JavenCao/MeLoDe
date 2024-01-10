@@ -22,9 +22,11 @@ LDLR-Meth (Methylation Caller for Low Depth Long Reads Sequencing) to detect DNA
 
 Users could train their own ZMWmeth model and Joint-CpG model for single-molecule 5mC calling and site level 5mC frequency estimation.
 
-* ZMWmeth model
+                                            **ZMWmeth model**
 
-(step1 - feature extration) From unaligned HiFi reads, such as m64284e_230525_074225_hifi.bam you got from the sequencer with fi/fp/ri/rp tags:
+(step1 - feature extration)
+
+From unaligned HiFi reads, such as m64284e_230525_074225_hifi.bam you got from the sequencer with fi/fp/ri/rp tags:
 
         ldlr_read --bamfile m64284e_230525_074225_hifi.bam \
                   --datatype HIFI \
@@ -32,9 +34,9 @@ Users could train their own ZMWmeth model and Joint-CpG model for single-molecul
                   --outprefix Sample_Name \
                   --outputType Feature
 
-    By running this, a file named "Sample_Name.Kmat.txt.gz" will be generated, which store read level features, from which the model can be trained.
+By running this, a file named "Sample_Name.Kmat.txt.gz" will be generated, which store read level features, from which the model can be trained.
 
-    OR, from aligned HiFi reads with fi/fp/ri/rp tags:
+OR, from aligned HiFi reads with fi/fp/ri/rp tags:
 
         ldlr_read --bamfile aligned.m64284e_230525_074225_hifi.bam \
                   --datatype HIFI \
@@ -43,7 +45,7 @@ Users could train their own ZMWmeth model and Joint-CpG model for single-molecul
                   --outputType Feature \
                   -cg cpg_motif.pos
 
-    By running this, a file named "Sample_Name.Kmat.txt.gz" will be generated, which sotre read level features with respected to each cpg motif on the reference genome.
+By running this, a file named "Sample_Name.Kmat.txt.gz" will be generated, which sotre read level features with respected to each cpg motif on the reference genome.
 
 
 
