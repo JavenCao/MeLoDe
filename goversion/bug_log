@@ -1,0 +1,3 @@
+(1) TOP_HiFiReadsFeature and Aligned_HiFiReadsMeth
+output files name should be ended with ".Kmat.txt.gz", compressed txt
+Currently, it is uncompressed txt without ".Kmat.txt.gz"
