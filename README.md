@@ -24,6 +24,8 @@ Users could train their own *ZMWmeth model* and *Joint-CpG model* for read-level
 
 **ZMWmeth model**
 
+To train *ZMWmeth model*, ground-truth Fully-methylated sample and Fully-unmethylated sample are needed.
+
 - Step1 - feature extration
 
 From unaligned HiFi reads, such as m64284e_230525_074225_hifi.bam you got from the sequencing machine with fi/fp/ri/rp tags:
