@@ -22,7 +22,7 @@ LDLR-Meth (Methylation Caller for Low Depth Long Reads Sequencing) to detect DNA
 
 Users could train their own ZMWmeth model and Joint-CpG model for single-molecule 5mC calling and site level 5mC frequency estimation.
 
-                                            **ZMWmeth model**
+**ZMWmeth model**
 
 (step1 - feature extration)
 
