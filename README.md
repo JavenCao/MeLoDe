@@ -30,28 +30,30 @@ ZMWmeth model can be trained with respected to HiFi reads, ZMW with subreads, do
 
 - Step1 - feature extration
 
- -- From unaligned HiFi reads, such as m64284e_230525_074225_hifi.bam you get from the sequencing machine with fi/fp/ri/rp tags:
+ From unaligned HiFi reads, such as m64284e_230525_074225_hifi.bam you get from the sequencing machine with fi/fp/ri/rp tags:
 
         ldlr_read --bamfile m64284e_230525_074225_hifi.bam \
                   --datatype HIFI \
                   --inputType unaligned \
+                  --radius 10 \
                   --outprefix Sample_Name \
                   --outputType Feature
 
-By running this, a file named "Sample_Name.Kmat.txt.gz" will be generated, which stores HiFi read level features.
+ By running this, a file named "Sample_Name.Kmat.txt.gz" will be generated, which stores HiFi read level features.
 
-OR, from aligned HiFi reads with fi/fp/ri/rp tags:
+ OR, from aligned HiFi reads with fi/fp/ri/rp tags:
 
         ldlr_read --bamfile aligned.m64284e_230525_074225_hifi.bam \
                   --datatype HIFI \
                   --inputType aligned \
+                  --radius 10 \
                   --outprefix Sample_Name \
                   --outputType Feature \
                   -cg cpg_motif.pos
 
-By running this, a file named "Sample_Name.Kmat.txt.gz" will be generated, which sotre read level features with respected to each cpg motif on the reference genome.
+ By running this, a file named "Sample_Name.Kmat.txt.gz" will be generated, which sotre read level features with respected to each cpg motif on the reference genome.
 
-Each line of cpg_motif.pos is CpG motif coordinates (1-based) on the reference genome, such as:
+ Each line of cpg_motif.pos is CpG motif coordinates (1-based) on the reference genome, such as:
 
         chr1	10469
         chr1	10471
