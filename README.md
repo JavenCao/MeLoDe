@@ -47,7 +47,9 @@ OR, from aligned HiFi reads with fi/fp/ri/rp tags:
 
 By running this, a file named "Sample_Name.Kmat.txt.gz" will be generated, which sotre read level features with respected to each cpg motif on the reference genome.
 
-Each line of cpg_motif.pos is CpG motif coordinates (1-based) on the reference genome, such as "chr1	10469".
+Each line of cpg_motif.pos is CpG motif coordinates (1-based) on the reference genome, such as:
 
-
-
+        chr1	10469
+        chr1	10471
+        chr1	10484
+        chr1	10489
