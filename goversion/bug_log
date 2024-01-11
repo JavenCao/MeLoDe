@@ -1,3 +1,4 @@
 (1) TOP_HiFiReadsFeature and Aligned_HiFiReadsFeature
 output files name should be ended with ".Kmat.txt.gz", compressed txt
 Currently, it is uncompressed txt without ".Kmat.txt.gz"
+(2) in readpredict.py line 189, add "Top" field
