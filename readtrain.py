@@ -14,8 +14,8 @@ from keras.layers.core import Dense, Dropout, Activation, Flatten
 """
 python readtrain.py --MethFeature Me.Kmat.txt.gz \
                     --UnMethFeature UnMe.Kmat.txt.gz \
-                    --Tmpdir /temp/folder \
-                    --OutModel zmwmeth.model
+                    --Tempdir /temp/folder \
+                    --OutModel Trained.zmwmeth.model
 """
 def get_args():
     parser = argparse.ArgumentParser()

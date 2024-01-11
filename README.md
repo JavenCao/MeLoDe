@@ -21,6 +21,7 @@ LDLR-Meth (Methylation Caller for Low Depth Long Reads Sequencing) to detect DNA
 ## Train your own models
 
 Users could train their own *ZMWmeth model* and *Joint-CpG model* to determine read-level 5mC status, and estimate site-level 5mC frequency, respectively.
+Actually, not only 5mC modification, but other modifications, as long as the training data can be properly generated
 
 **ZMWmeth model**
 
@@ -30,7 +31,7 @@ ZMWmeth model can be trained with respected to HiFi reads, ZMW with subreads, do
 
 - Step1 - feature extration
 
- From unaligned HiFi reads, such as m64284e_230525_074225_hifi.bam you get from the sequencing machine with fi/fp/ri/rp tags:
+From unaligned HiFi reads, such as m64284e_230525_074225_hifi.bam you get from the sequencing machine with fi/fp/ri/rp tags:
 
         ldlr_read --bamfile m64284e_230525_074225_hifi.bam \
                   --datatype HIFI \
@@ -39,9 +40,9 @@ ZMWmeth model can be trained with respected to HiFi reads, ZMW with subreads, do
                   --outprefix Sample_Name \
                   --outputType Feature
 
- By running this, a file named "Sample_Name.Kmat.txt.gz" will be generated, which stores HiFi read level features.
+By running this, a file named "Sample_Name.Kmat.txt.gz" will be generated, which stores HiFi read level features.
 
- OR, from aligned HiFi reads with fi/fp/ri/rp tags:
+OR, from aligned HiFi reads with fi/fp/ri/rp tags:
 
         ldlr_read --bamfile aligned.m64284e_230525_074225_hifi.bam \
                   --datatype HIFI \
@@ -51,15 +52,21 @@ ZMWmeth model can be trained with respected to HiFi reads, ZMW with subreads, do
                   --outputType Feature \
                   -cg cpg_motif.pos
 
- By running this, a file named "Sample_Name.Kmat.txt.gz" will be generated, which sotre read level features with respected to each cpg motif on the reference genome.
+By running this, a file named "Sample_Name.Kmat.txt.gz" will be generated, which sotre read level features with respected to each cpg motif on the reference genome.
 
- Each line of cpg_motif.pos is CpG motif coordinates (1-based) on the reference genome, such as:
+Each line of cpg_motif.pos is a CpG motif coordinate (1-based) on the reference genome, such as:
 
         chr1	10469
         chr1	10471
         chr1	10484
         chr1	10489
+        ...
 
-- Step2 - Formatting and model training
+- Step2 - model training
 
-From the feature files above, model can be trained as follows:
+Using feature files above (Fully-methylated sample and Fully-unmethylated sample are both needed!), ZMWmeth model can be trained as follows:
+
+        python readtrain.py --MethFeature Me.Kmat.txt.gz \
+                        --UnMethFeature UnMe.Kmat.txt.gz \
+                        --Tempdir /temp/folder \
+                        --OutModel Trained.zmwmeth.model
