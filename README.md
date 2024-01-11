@@ -31,9 +31,9 @@ ZMWmeth model can be trained with respected to HiFi reads, ZMW with subreads, do
 
 **- Step1 - feature extration**
 
-Aligned Bam and unaligned Bam are both supported, as long as fi/fp/ri/rp(HiFi reads), ip/pw(Subreads) tags are present. Please find the commands accordingly.
+Aligned Bam and unaligned Bam are both supported, as long as fi/fp/ri/rp(HiFi reads), ip/pw(Subreads) tags are present. Please find the commands accordingly. - (1)(2)(3)
 
-From **unaligned HiFi reads**, such as m64284e_230525_074225_hifi.bam you get from the sequencing machine with fi/fp/ri/rp tags:
+(1) From **unaligned HiFi reads**, such as m64284e_230525_074225_hifi.bam you get from the sequencing machine with fi/fp/ri/rp tags:
 
         ldlr_read --bamfile m64284e_230525_074225_hifi.bam \
                   --datatype HIFI \
@@ -44,7 +44,7 @@ From **unaligned HiFi reads**, such as m64284e_230525_074225_hifi.bam you get fr
 
 By running this, a file named "Sample_Name.Kmat.txt.gz" will be generated, which stores HiFi read level features.
 
-OR, from **aligned HiFi reads** with fi/fp/ri/rp tags:
+(2) From **aligned HiFi reads** with fi/fp/ri/rp tags:
 
         ldlr_read --bamfile aligned.m64284e_230525_074225_hifi.bam \
                   --datatype HIFI \
@@ -56,7 +56,7 @@ OR, from **aligned HiFi reads** with fi/fp/ri/rp tags:
 
 By running this, a file named "Sample_Name.Kmat.txt.gz" will be generated, which stores HiFi read level features with respected to each cpg motif on the reference genome.
 
-OR from **aligned subreads** with ip/pw tags:
+(3) From **aligned subreads** with ip/pw tags:
 
         ldlr_read --bamfile aligned.m64284e_230525_074225_subreads.bam \
                   --datatype SUBREAD \
