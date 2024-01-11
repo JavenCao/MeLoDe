@@ -21,7 +21,7 @@ LDLR-Meth (Methylation Caller for Low Depth Long Reads Sequencing) to detect DNA
 ## Train your own models
 
 Users could train their own *ZMWmeth model* and *Joint-CpG model* to determine read-level 5mC status, and estimate site-level 5mC frequency, respectively.
-Actually, not only 5mC modification, but other modifications, as long as the training data can be properly generated
+Actually, not only 5mC modification, but other DNA/RNA modifications fit, as long as the training data can be properly generated
 
 **ZMWmeth model**
 
