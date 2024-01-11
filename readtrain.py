@@ -18,7 +18,7 @@ if __name__ == "__main__":
     usage:
     python readtrain.py --MethFeature Me.Kmat.txt.gz \
                         --UnMethFeature UnMe.Kmat.txt.gz \
-                        --OutModel /output/folder/
+                        --OutDir /output/folder/
     """
 # mfile="/storage/yangjianLab/caoyujie/project/meth/6_Freeze/1_Single_molecule_level/1_K_Feature/meHG01109_hifi/test.meHG01109_hifi.Kmat.txt.gz"
 # umfile="/storage/yangjianLab/caoyujie/project/meth/6_Freeze/1_Single_molecule_level/1_K_Feature/wgaHG01109_hifi/test.wgaHG01109_hifi.Kmat.txt.gz"
