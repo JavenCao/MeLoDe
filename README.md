@@ -29,9 +29,11 @@ To train *ZMWmeth model*, ground-truth Fully-methylated sample and Fully-unmethy
 
 ZMWmeth model can be trained with respected to HiFi reads, ZMW with subreads, double-strand resolution and single-strand resolution.
 
-- Step1 - feature extration
+**- Step1 - feature extration**
 
-From unaligned HiFi reads, such as m64284e_230525_074225_hifi.bam you get from the sequencing machine with fi/fp/ri/rp tags:
+Aligned Bam and unaligned Bam are both supported, as long as fi/fp/ri/rp(HiFi reads), ip/pw(Subreads) tags are present. Please find the commands accordingly.
+
+From **unaligned HiFi reads**, such as m64284e_230525_074225_hifi.bam you get from the sequencing machine with fi/fp/ri/rp tags:
 
         ldlr_read --bamfile m64284e_230525_074225_hifi.bam \
                   --datatype HIFI \
@@ -42,7 +44,7 @@ From unaligned HiFi reads, such as m64284e_230525_074225_hifi.bam you get from t
 
 By running this, a file named "Sample_Name.Kmat.txt.gz" will be generated, which stores HiFi read level features.
 
-OR, from aligned HiFi reads with fi/fp/ri/rp tags:
+OR, from **aligned HiFi reads** with fi/fp/ri/rp tags:
 
         ldlr_read --bamfile aligned.m64284e_230525_074225_hifi.bam \
                   --datatype HIFI \
@@ -52,7 +54,19 @@ OR, from aligned HiFi reads with fi/fp/ri/rp tags:
                   --outputType Feature \
                   -cg cpg_motif.pos
 
-By running this, a file named "Sample_Name.Kmat.txt.gz" will be generated, which sotre read level features with respected to each cpg motif on the reference genome.
+By running this, a file named "Sample_Name.Kmat.txt.gz" will be generated, which stores HiFi read level features with respected to each cpg motif on the reference genome.
+
+OR from **aligned subreads** with ip/pw tags:
+
+        ldlr_read --bamfile aligned.m64284e_230525_074225_subreads.bam \
+                  --datatype SUBREAD \
+                  --inputType aligned \
+                  --radius 10 \
+                  --outprefix Sample_Name \
+                  --outputType Feature \
+                  -cg cpg_motif.pos
+
+By running this, a file named "Sample_Name.Kmat.txt.gz" will be generated, which sotre single molecule level features(in the unit of ZMW) with respected to each cpg motif on the reference genome.
 
 Each line of cpg_motif.pos is a CpG motif coordinate (1-based) on the reference genome, such as:
 
@@ -62,9 +76,9 @@ Each line of cpg_motif.pos is a CpG motif coordinate (1-based) on the reference 
         chr1	10489
         ...
 
-- Step2 - model training
+**- Step2 - model training**
 
-Using feature files above (Fully-methylated sample and Fully-unmethylated sample are both needed!), ZMWmeth model can be trained as follows:
+Using feature files above (Fully-methylated sample and Fully-unmethylated sample are both needed), ZMWmeth model can be trained as follows:
 
         python readtrain.py --MethFeature Me.Kmat.txt.gz \
                         --UnMethFeature UnMe.Kmat.txt.gz \
