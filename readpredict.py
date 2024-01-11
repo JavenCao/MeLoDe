@@ -312,7 +312,6 @@ def Aligned_HiFiReadsFeature(inbamf, cglist, outfile, minsubdep, maxsubdep, mapp
                     read_is_reverse = read.is_reverse
                     read_query_length = read.query_length
                     read_cigartuples = read.cigartuples
-                    haplotype, haplotype_block = (str(read.get_tag("HP")), str(read.get_tag("PS"))) if read.has_tag("HP") else ("X", "X")# HP:i:2   PS:i:11457
                     zmwname = str(read.query_name.split("/")[0]) + "_" + str(read.query_name.split("/")[1])
                     # ------------------------------------------------------------------------------------------------
                     # step2: locate genome CpG to each read
@@ -348,7 +347,7 @@ def Aligned_HiFiReadsFeature(inbamf, cglist, outfile, minsubdep, maxsubdep, mapp
                             R_template_seq_string = "".join(R_template_seq)
                             R_ipd_part_line = ",".join(map(str, R_ipd_list))
                             R_pw_part_line = ",".join(map(str, R_pw_list))
-                            output_cpg_line = f"{Chr}\t{pos_C}\t{zmwname}\t{fn}\t{rn}\t{F_template_seq_string}\t{F_ipd_part_line}\t{F_pw_part_line}\t{R_template_seq_string}\t{R_ipd_part_line}\t{R_pw_part_line}\t{haplotype}\t{haplotype_block}\n"
+                            output_cpg_line = f"{Chr}\t{pos_C}\t{zmwname}\t{fn}\t{rn}\t{F_template_seq_string}\t{F_ipd_part_line}\t{F_pw_part_line}\t{R_template_seq_string}\t{R_ipd_part_line}\t{R_pw_part_line}\n"
                             output_lines.append(output_cpg_line)
                             if len(output_lines) >= 10000:
                                 fout.write(''.join(output_lines).encode('utf-8'))
