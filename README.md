@@ -82,5 +82,4 @@ Using feature files above (Fully-methylated sample and Fully-unmethylated sample
 
         python readtrain.py --MethFeature Me.Kmat.txt.gz \
                         --UnMethFeature UnMe.Kmat.txt.gz \
-                        --Tempdir /temp/folder \
-                        --OutModel Trained.zmwmeth.model
+                        --OutDir /output/folder/
