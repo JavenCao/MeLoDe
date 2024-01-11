@@ -186,7 +186,7 @@ def TOP_HiFiReadsFeature(Topbam, outfile, minsubdep, maxsubdep, R, scaleFlag):
                     R_ipd_part_line = ",".join(map(str, HiFiread_com_template_ipd_list))
                     R_pw_part_line = ",".join(map(str, HiFiread_com_template_pw_list))
                     # combine line parts into a line
-                    output_cpg_line = f"{zmwname}\t{pos_on_read}\t{fn}\t{rn}\t{F_template_seq_string}\t{F_ipd_part_line}\t{F_pw_part_line}\t{R_template_seq_string}\t{R_ipd_part_line}\t{R_pw_part_line}\n"
+                    output_cpg_line = f"Top\t{zmwname}\t{pos_on_read}\t{fn}\t{rn}\t{F_template_seq_string}\t{F_ipd_part_line}\t{F_pw_part_line}\t{R_template_seq_string}\t{R_ipd_part_line}\t{R_pw_part_line}\n"
                     output_lines.append(output_cpg_line)
                     if len(output_lines) >= 10000:
                         fout.write(''.join(output_lines).encode('utf-8'))
