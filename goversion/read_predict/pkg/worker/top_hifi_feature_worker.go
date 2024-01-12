@@ -2,6 +2,7 @@ package worker
 
 import (
 	"fmt"
+	"github.com/Taichidasheen/read_predict/pkg/opt"
 	"github.com/biogo/hts/sam"
 	"log"
 	"strings"
@@ -10,31 +11,32 @@ import (
 type TopHiFiFeatureWorker struct {
 	record     *sam.Record
 	resultChan chan string
-	mappingQ   int
-	minSubDep  int
-	maxSubDep  int
-	radius     int
-	scaleFlag  bool
-	err        error
+	//mappingQ   int
+	//minSubDep  int
+	//maxSubDep  int
+	//radius     int
+	//scaleFlag  bool
+	opts opt.Options
+	err  error
 }
 
-func NewTopHiFiFeatureWorker(record *sam.Record, resultChan chan string,
-	mappingQ, minSubDep, maxSubDep, radius int, scaleFlag bool) TopHiFiFeatureWorker {
+func NewTopHiFiFeatureWorker(record *sam.Record, resultChan chan string, opts opt.Options) TopHiFiFeatureWorker {
 	return TopHiFiFeatureWorker{
 		record:     record,
 		resultChan: resultChan,
-		mappingQ:   mappingQ,
-		minSubDep:  minSubDep,
-		maxSubDep:  maxSubDep,
-		radius:     radius,
-		scaleFlag:  scaleFlag,
+		opts:       opts,
+		//mappingQ:   mappingQ,
+		//minSubDep:  minSubDep,
+		//maxSubDep:  maxSubDep,
+		//radius:     radius,
+		//scaleFlag:  scaleFlag,
 	}
 }
 
 func (w *TopHiFiFeatureWorker) Task(num int) {
 	record := w.record
-	radius := w.radius
-	scaleFlag := w.scaleFlag
+	radius := w.opts.Radius
+	scaleFlag := w.opts.ScaleFlag
 	recordTag, err := extractRecordTag(record)
 	if err != nil {
 		log.Printf("extractRecordTag err:%v", err)
@@ -44,7 +46,7 @@ func (w *TopHiFiFeatureWorker) Task(num int) {
 	fn := recordTag.Fn
 	rn := recordTag.Rn
 	totalSubreadsDep := fn + rn
-	if totalSubreadsDep >= int32(w.minSubDep) && totalSubreadsDep <= int32(w.maxSubDep) && fn >= 1 && rn >= 1 {
+	if totalSubreadsDep >= int32(w.opts.MinSubDep) && totalSubreadsDep <= int32(w.opts.MaxSubDep) && fn >= 1 && rn >= 1 {
 		readFiList := recordTag.Fi
 		readFpList := recordTag.Fp
 		readRiList := recordTag.Ri
@@ -85,7 +87,7 @@ func (w *TopHiFiFeatureWorker) Task(num int) {
 				rIPDPart := formatSlice(feature.ComTemplateIPDList)
 				rPWPart := formatSlice(feature.ComTemplatePWList)
 
-				outputZMWLine := fmt.Sprintf("%s\t%d\t%d\t%d\t%s\t%s\t%s\t%s\t%s\t%s",
+				outputZMWLine := fmt.Sprintf("Top\t%s\t%d\t%d\t%d\t%s\t%s\t%s\t%s\t%s\t%s",
 					zmwname, posOnRead, fn, rn, fTemplateSeqStr, fIPDPart, fPWPart,
 					rTemplateSeqStr, rIPDPart, rPWPart)
 				w.resultChan <- outputZMWLine

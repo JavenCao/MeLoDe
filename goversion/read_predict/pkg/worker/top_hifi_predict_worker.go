@@ -2,6 +2,7 @@ package worker
 
 import (
 	"fmt"
+	"github.com/Taichidasheen/read_predict/pkg/opt"
 	"github.com/biogo/hts/sam"
 	tf "github.com/wamuir/graft/tensorflow"
 	"log"
@@ -21,35 +22,36 @@ type TopHiFiPredictWorker struct {
 	model      *tf.SavedModel
 	record     *sam.Record
 	resultChan chan *sam.Record
-	mappingQ   int
-	minSubDep  int
-	maxSubDep  int
-	radius     int
-	scaleFlag  bool
-	keepK      string
-	err        error
+	//mappingQ   int
+	//minSubDep  int
+	//maxSubDep  int
+	//radius     int
+	//scaleFlag  bool
+	//keepK      string
+	opts opt.Options
+	err  error
 }
 
-func NewTopHiFiPredictWorker(model *tf.SavedModel, record *sam.Record, resultChan chan *sam.Record,
-	mappingQ, minSubDep, maxSubDep, radius int, scaleFlag bool, keepK string) TopHiFiPredictWorker {
+func NewTopHiFiPredictWorker(model *tf.SavedModel, record *sam.Record, resultChan chan *sam.Record, opts opt.Options) TopHiFiPredictWorker {
 	return TopHiFiPredictWorker{
 		model:      model,
 		record:     record,
 		resultChan: resultChan,
-		mappingQ:   mappingQ,
-		minSubDep:  minSubDep,
-		maxSubDep:  maxSubDep,
-		radius:     radius,
-		scaleFlag:  scaleFlag,
-		keepK:      keepK,
+		opts:       opts,
+		//mappingQ:   mappingQ,
+		//minSubDep:  minSubDep,
+		//maxSubDep:  maxSubDep,
+		//radius:     radius,
+		//scaleFlag:  scaleFlag,
+		//keepK:      keepK,
 	}
 }
 
 func (w *TopHiFiPredictWorker) Task(num int) {
 	model := w.model
 	record := w.record
-	radius := w.radius
-	scaleFlag := w.scaleFlag
+	radius := w.opts.Radius
+	scaleFlag := w.opts.ScaleFlag
 	recordTag, err := extractRecordTag(record)
 	if err != nil {
 		log.Printf("extractRecordTag err:%v", err)
@@ -59,7 +61,7 @@ func (w *TopHiFiPredictWorker) Task(num int) {
 	fn := recordTag.Fn
 	rn := recordTag.Rn
 	totalSubreadsDep := fn + rn
-	if totalSubreadsDep >= int32(w.minSubDep) && totalSubreadsDep <= int32(w.maxSubDep) && fn >= 1 && rn >= 1 {
+	if totalSubreadsDep >= int32(w.opts.MinSubDep) && totalSubreadsDep <= int32(w.opts.MaxSubDep) && fn >= 1 && rn >= 1 {
 		readFiList := recordTag.Fi
 		readFpList := recordTag.Fp
 		readRiList := recordTag.Ri
@@ -125,7 +127,7 @@ func (w *TopHiFiPredictWorker) Task(num int) {
 			}
 			record.AuxFields = append(record.AuxFields, mlTag)
 			record.AuxFields = append(record.AuxFields, mmTag)
-			if w.keepK == "remove" {
+			if w.opts.KeepK == "remove" {
 				removeRecordTag(record)
 			}
 			//写出到channel
