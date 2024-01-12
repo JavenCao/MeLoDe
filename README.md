@@ -5,16 +5,57 @@ LDLR-Meth (Methylation Caller for Low Depth Long Reads Sequencing) to detect DNA
 
 <img width="451" alt="image" src="https://github.com/JavenCao/LDLR-Meth/assets/37092316/5c44fc48-e904-4416-9145-a6e08d507e91">
 
-## step1: single-molecule 5mC identification
-### HiFi reads can be treated as a unit
-### non_HiFi molecules can be called by subreads
-### ONT reads is called by Dorado[src=https://github.com/nanoporetech/dorado]
+## General Workflow
+(1) Before align HiFi reads to the reference genome, profile the CpG methylation status for each read, generating MM/ML tag and dropping fi/fp/ri/rp tags in the output ModBam file
+(2) Align mod.Bam to the reference genome.
+(3) Estimate CpG site level methylation frequency on the reference genome.
+
+### Quick start: ###
+**Step1: single-molecule 5mC identification**
+From **unaligned HiFi reads**:
+
+        ldlr_read --bamfile m64284e_230525_074225_hifi.bam \
+                  --datatype HIFI \
+                  --inputType unaligned \
+                  --outprefix Sample_Name \
+                  --outputType ModBam
+
+By running this, "Sample_Name.5mc.mod.unaligned.bam" will be generated in which the MM/ML tag wil be created, and fi/fp/ri/rp tags are removed.
+Adding "--KeepKinetics keep" will keep the fi/fp/ri/rp tags.
+
+Next, align the above ModBam file to the reference genome using pbmm2:
+
+        pbmm2 align --preset HIFI \
+                    --sample "Sample_Name" \
+                    "$Ref_GRCh38" Sample_Name.5mc.mod.unaligned.bam Aligned_Sample_Name.5mc.mod.unaligned.bam
+
+By running this, "Aligned_Sample_Name.5mc.mod.unaligned.bam" will be generated.
+
+**Step2:CpG-site level 5mC frequency estimation**
+
+        ldlr_site --bamfile Aligned_Sample_Name.5mc.mod.unaligned.bam \
+                  --cpgbed cpg_motif.pos \
+                  --outfile Site.5mC.fre
+
+By running this, "Site.5mC.fre" will be generated reporting CpG site level DNA 5mC frequency.
+
+Each line of cpg_motif.pos is a CpG motif coordinate (1-based) on the reference genome, such as:
+
+        chr1	10469
+        chr1	10471
+        chr1	10484
+        chr1	10489
+        ...
+
+
+## Suggested Workflow of LDLR-Meth in the low depth design
+
+Align reads to the reference genome, keeping fi/fp/ri/rp(HiFi reads), ip/pw(Subreads) in the alignment BAM file using pbmm2:
+        pbmm2 align --preset CCS --sample "$sampleid" -j ${CPUnum} --log-level "INFO" "$Ref_GRCh38" ${inputfofn} ${outputbam}
+        pbmm2 align --preset SUBREAD --sample "$sampleid" -j ${CPUnum} --log-level "INFO" "$Ref_GRCh38" ${inputfofn} ${outputbam}
 
 
 
-## step2: CpG site level 5mC frequency estimation
-
-## step3: Use HiFi and non_HiFi molecules in the low-depth design 
 
 
 
@@ -52,7 +93,7 @@ By running this, a file named "Sample_Name.Kmat.txt.gz" will be generated, which
                   --radius 10 \
                   --outprefix Sample_Name \
                   --outputType Feature \
-                  -cg cpg_motif.pos
+                  --cpgbed cpg_motif.pos
 
 By running this, a file named "Sample_Name.Kmat.txt.gz" will be generated, which stores HiFi read level features with respected to each cpg motif on the reference genome.
 
@@ -68,14 +109,6 @@ By running this, a file named "Sample_Name.Kmat.txt.gz" will be generated, which
 
 By running this, a file named "Sample_Name.Kmat.txt.gz" will be generated, which sotre single molecule level features(in the unit of ZMW) with respected to each cpg motif on the reference genome.
 
-Each line of cpg_motif.pos is a CpG motif coordinate (1-based) on the reference genome, such as:
-
-        chr1	10469
-        chr1	10471
-        chr1	10484
-        chr1	10489
-        ...
-
 **- Step2 - model training**
 
 Using feature files above (Fully-methylated sample and Fully-unmethylated sample are both needed), ZMWmeth model can be trained as follows:
@@ -83,3 +116,5 @@ Using feature files above (Fully-methylated sample and Fully-unmethylated sample
         python readtrain.py --MethFeature Me.Kmat.txt.gz \
                         --UnMethFeature UnMe.Kmat.txt.gz \
                         --OutDir /output/folder/
+
+By running this, model file  will be generated.
