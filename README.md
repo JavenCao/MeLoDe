@@ -1,7 +1,7 @@
 # LDLR-Meth
 Low depth long reads methylation caller
 
-## Quick start:
+## Quick start (if you works with HiFi reads, >5x coverage):
 
 **Step1: single-molecule 5mC identification**
 
