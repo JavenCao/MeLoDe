@@ -1,3 +1,7 @@
+(4) w.r.t (1), the speed is slow if output is: ".Kmat.txt.gz", compressed txt.
+can be speeded up? or go back to uncompressed ".Kmat.txt"
+
+### belows are fixed, 2024-01-12
 (1) TOP_HiFiReadsFeature and Aligned_HiFiReadsFeature
 output files name should be ended with ".Kmat.txt.gz", compressed txt
 Currently, it is uncompressed txt without ".Kmat.txt.gz"
