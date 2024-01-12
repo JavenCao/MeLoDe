@@ -2,7 +2,7 @@
 Low depth long reads methylation caller
 
 ## Quick start:
-If you only have HiFi reads, feel free to use, go ahead!
+If you only have HiFi reads(>5x), feel free to use, go ahead!
 
 **Step1: single-molecule 5mC identification**
 
