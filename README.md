@@ -14,14 +14,12 @@ From **unaligned HiFi reads**:
                   --outprefix Sample_Name \
                   --outputType ModBam
 
-By running this, "Sample_Name.5mc.mod.unaligned.bam" will be generated in which the MM/ML tag wil be created, and fi/fp/ri/rp tags are removed.
-Adding "--KeepKinetics keep" will keep the fi/fp/ri/rp tags.
+By running this, "Sample_Name.5mc.mod.unaligned.bam" will be generated in which the MM/ML tag is created, tagging the positions and 5mC probabilities of CpGs on reads.
+Adding "--KeepKinetics keep" will keep the fi/fp/ri/rp tags, otherwise removed
 
-Next, align the above ModBam file to the reference genome using pbmm2:
+Next, align the 5mC tagged ModBam to the reference genome using pbmm2:
 
         pbmm2 align --preset HiFi Ref.fa Sample_Name.5mc.mod.unaligned.bam Aligned_Sample_Name.5mc.mod.unaligned.bam
-
-By running this, "Aligned_Sample_Name.5mc.mod.unaligned.bam" will be generated.
 
 **Step2:CpG-site level 5mC frequency estimation**
 
@@ -29,9 +27,9 @@ By running this, "Aligned_Sample_Name.5mc.mod.unaligned.bam" will be generated.
                   --cpgbed cpg_motif.pos \
                   --outfile Site.5mC.fre
 
-By running this, "Site.5mC.fre" will be generated reporting CpG site level DNA 5mC frequency.
+Output file of "Site.5mC.fre" reports DNA 5mC frequency on CpG site.
 
-Each line of cpg_motif.pos is a CpG motif coordinate (1-based) on the reference genome, such as:
+Each line of "cpg_motif.pos" is a CpG motif coordinate (1-based) on the reference genome, such as:
 
         chr1	10469
         chr1	10471
