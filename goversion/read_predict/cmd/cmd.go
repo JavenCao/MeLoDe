@@ -143,7 +143,7 @@ func main() {
 
 			//resultPath := "/storage/yangjianLab/westlakechat/subreads_locate/result.txt"
 			//异步写入result
-			go writeGzipResult(&wg, outPrefix, resultChan)
+			go writeTextResult(&wg, outPrefix, resultChan)
 			//bamHeader := bamReader.Header()
 			//go writeBamRecord(&wg, bamHeader, outPrefix, predictResultChan)
 		}
@@ -173,7 +173,7 @@ func main() {
 
 			//resultPath := "/storage/yangjianLab/westlakechat/subreads_locate/result.txt"
 			//异步写入result
-			go writeGzipResult(&wg, outPrefix, resultChan)
+			go writeTextResult(&wg, outPrefix, resultChan)
 			//bamHeader := bamReader.Header()
 			//go writeBamRecord(&wg, bamHeader, outPrefix, predictResultChan)
 		}
