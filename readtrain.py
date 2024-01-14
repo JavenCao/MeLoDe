@@ -30,6 +30,7 @@ if __name__ == "__main__":
     outdir_tmp = outdir + "/tmp"# npz files will be writen into this folder
     os.makedirs(outdir_tmp, exist_ok=True)
     strand_flag = args.StrandResolution
+    cpus = args.cpus
     #
     # - - - - - - - - - - - - - -
     # step1: create npz files
@@ -45,7 +46,7 @@ if __name__ == "__main__":
     # step3: read in train.npz.file.list and do the training process
     Train_npz_file=f"{outdir}/train.npz.file.list"
     FileBatch_Size = 3 # each time use 3*1000=3000 ZMWs to train
-    zmwmeth_model = ZMWmeth_model_training(Train_npz_file, winsize, FileBatch_Size, strand_flag)
+    zmwmeth_model = ZMWmeth_model_training(Train_npz_file, winsize, FileBatch_Size, strand_flag, cpus)
     #
     # - - - - - - - - - - - - - -
     # step4: saved as tf.model
@@ -60,6 +61,7 @@ def get_args():
     parser.add_argument("-Meth", "--MethFeature", help="Fully-Methylated sample")
     parser.add_argument("-UnMeth", "--UnMethFeature", help="Fully-unMethylated sample")
     parser.add_argument("-strand","--StrandResolution", action='store_true', default=False)
+    parser.add_argument("-c","--cpus",default=1,help="cpus")
     parser.add_argument("-out", "--OutDir", help="Output directory")
     return parser.parse_args()
 #
@@ -73,14 +75,13 @@ def Create_Read_npz_file(FetureFile, status, maxZMW, outdir):
     i_c = -1 # Count of ZMW
     i_c_file = 0 # File index for the output ZMWs
     #
-    with gzip.open(FetureFile,"rt") as fp:
+    # with gzip.open(FetureFile,"rt") as fp:
+    with open(FetureFile,"rt") as fp:
         # sacrifice the 1st line to get the window size for initiate
         example_line = next(fp)
-        print(example_line)
-        print(example_line.rstrip().split("\t")[5])
-        winSize =  len(example_line.rstrip().split("\t")[4])# 21
+        winSize =  len(example_line.rstrip().split("\t")[5])# 21
         x = np.ndarray((maxZMW, 13, winSize), dtype = np.float16)
-        y = []
+        y = [status] * maxZMW
         #
         for line in fp:
             i_c = i_c + 1
@@ -88,14 +89,13 @@ def Create_Read_npz_file(FetureFile, status, maxZMW, outdir):
             npasses = int(fn) + int(rn)
             mat = Format_closedZMW(F_template_seq, F_ipdlist.split(','), F_pwlist.split(','), R_template_seq, R_ipdlist.split(','), R_pwlist.split(','), npasses)
             x[i_c] = mat
-            y.append(status)
             if i_c >= maxZMW-1:
                 outputfile_name = f"{outdir}/status_{status}.Feature.ZMW.chunk{i_c_file}.npz"
                 np.savez_compressed(outputfile_name, X=x, y=np.array(y))
                 i_c = 0
                 i_c_file = i_c_file + 1
                 x = np.zeros((maxZMW, 13, winSize), dtype=np.float16)
-                y = []
+                y = [status] * maxZMW
         if i_c > 0:
             outputfile_name = f"{outdir}/status_{status}.Feature.ZMW.chunk{i_c_file}.npz"
             np.savez_compressed(outputfile_name, X=x[:i_c], y=np.array(y))
@@ -126,7 +126,7 @@ def Format_closedZMW(F_template_seq, F_ipdlist, F_pwlist, R_template_seq, R_ipdl
     return mat
 #
 #
-def ZMWmeth_model_training(Train_npz_file, winsize, FileBatch_Size, strand_flag):
+def ZMWmeth_model_training(Train_npz_file, winsize, FileBatch_Size, strand_flag, cpus):
     # 1. read in all the npz files
     with open(Train_npz_file,"rt") as f:
         file_list = f.read().splitlines()
@@ -153,7 +153,7 @@ def ZMWmeth_model_training(Train_npz_file, winsize, FileBatch_Size, strand_flag)
             validation_steps=len(validation_file_list)//FileBatch_Size,
             verbose=2,
             callbacks=[early_stopping, CheckNanCallback(train_dataset)],
-            use_multiprocessing=True,
+            use_multiprocessing=True, workers=cpus,
             max_queue_size=10000)
     return model
 #
