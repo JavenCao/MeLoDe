@@ -666,7 +666,7 @@ def read_Meth_prediction(X_reads, loaded_model):
 #
 def HiFiRead_cpg_K_Feature(pos_on_SEQ, read_is_reverse, R, read_query_length, read_SEQ_string, read_fi_list, read_fp_list, read_ri_list, read_rp_list, scaleFlag):
     """
-    Development,2024-01-09
+    Freeze, 2024-01-09
     Related knowledge: DNA polymerase moves along in 3'->5' direction on the template, generating the 5'->3' reads.
     Return: (1) TopHiFi_Template_seq in 3'->5' + IPD/PW while syning the TopHiFi_Template_seq
                 HiFiread_template_seq, HiFiread_template_ipd_list, HiFiread_template_pw_list
