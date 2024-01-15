@@ -141,6 +141,7 @@ Specifically, reads/ZMWs/CpGs used for training can be pre-selected. Such as:
 * use 1 or multiple read(s) for each CpG
 * use same number of reads from Fully-methylated sample and Fully-unmethylated sample
 * merge multiple samples and/or species
+* random select 10M reads
 * ... ...
 
 
