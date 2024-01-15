@@ -5,6 +5,7 @@ import os
 import subprocess
 import tensorflow as tf
 import argparse
+import shutil
 from tensorflow.keras.layers import Dense
 from tensorflow.keras.models import Sequential
 from keras.layers.convolutional import MaxPooling1D
@@ -20,9 +21,9 @@ if __name__ == "__main__":
                         --UnMethFeature UnMe.Kmat.txt.gz \
                         --OutDir /output/folder/
     """
-# mfile="/storage/yangjianLab/caoyujie/project/meth/6_Freeze/1_Single_molecule_level/1_K_Feature/meHG01109_hifi/test.meHG01109_hifi.Kmat.txt.gz"
-# umfile="/storage/yangjianLab/caoyujie/project/meth/6_Freeze/1_Single_molecule_level/1_K_Feature/wgaHG01109_hifi/test.wgaHG01109_hifi.Kmat.txt.gz"
-# outdir="/storage/yangjianLab/caoyujie/project/meth/6_Freeze/1_Single_molecule_level/1_K_Feature/test"
+    # mfile="/storage/yangjianLab/caoyujie/project/meth/6_Freeze/1_Single_molecule_level/1_K_Feature/meHG01109_hifi/test.meHG01109_hifi.Kmat.txt.gz"
+    # umfile="/storage/yangjianLab/caoyujie/project/meth/6_Freeze/1_Single_molecule_level/1_K_Feature/wgaHG01109_hifi/test.wgaHG01109_hifi.Kmat.txt.gz"
+    # outdir="/storage/yangjianLab/caoyujie/project/meth/6_Freeze/1_Single_molecule_level/1_K_Feature/test"
     args = get_args()
     mfile = args.MethFeature
     umfile = args.UnMethFeature
@@ -39,7 +40,7 @@ if __name__ == "__main__":
     #
     # - - - - - - - - - - - - - -
     # step2: create npz file list and shuffle it
-    command = f"ls {outdir_tmp}/*.npz | shuf - > {outdir}/train.npz.file.list"
+    command = f"find {outdir_tmp} -name '*.npz' -printf '%p\n' | shuf > {outdir}/train.npz.file.list"
     subprocess.run(command, shell=True)
     #
     # - - - - - - - - - - - - - -
@@ -52,6 +53,13 @@ if __name__ == "__main__":
     # step4: saved as tf.model
     out_model_file_name = outdir + "/ZMWmeth.model"
     tf.saved_model.save(zmwmeth_model, out_model_file_name)
+    #
+    # - - - - - - - - - - - - - -
+    # step5: remove outdir_tmp and train_npz_file
+    if os.path.exists(outdir_tmp):
+        shutil.rmtree(outdir_tmp)
+    if os.path.exists(train_npz_file):
+        os.remove(train_npz_file)
 else:
     pass
 #
@@ -209,7 +217,8 @@ class Generator(tf.keras.utils.Sequence):
                 y_strand[2*index+1] = y[index]
             # final return is in the format of (2N,21,7)
             return np.transpose(X_strand,(0,2,1)),y_strand
-
+#
+#
 class CheckNanCallback(tf.keras.callbacks.Callback):
     def __init__(self, generator):
         super().__init__()
