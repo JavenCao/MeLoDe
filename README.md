@@ -135,7 +135,14 @@ Using feature files above (Fully-methylated sample and Fully-unmethylated sample
                         --UnMethFeature UnMe.Kmat.txt.gz \
                         --OutDir /output/folder/
 
-By running this, model file  will be generated.
+Specifically, reads/ZMWs/CpGs used for training can be pre-selected. Such as:
+* select reads/molecules located at CpG-Island/CpG-desert
+* select CpGs at chromsome 10
+* use 1 or multiple read(s) for each CpG
+* use same number of reads from Fully-methylated sample and Fully-unmethylated sample
+* merge multiple samples and/or species
+* random select 10M reads
+* ... ...
 
 
 
