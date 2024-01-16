@@ -722,9 +722,10 @@ def HiFiRead_cpg_K_Feature(pos_on_SEQ, read_is_reverse, R, read_query_length, re
 # 2023-12-29: Aligned subreads feature extraction
 # 2024-01-02: Revised
 # 2024-01-03: Revised
+# 2024-01-16: Revised
 def Aligned_subreadsBam_Feature(bamf, cglist, outputp, outputType, mappingQ, R, scaleFlag):
     """
-        2024-01-03
+        2024-01-16,2024-01-03
         INPUT: aligned subreads BAM file with ip/pw tags
         OUTPUT: outputType == "MoleculeLevel": Single molecule level prediction
     """
@@ -796,12 +797,13 @@ def Aligned_subreadsBam_Feature(bamf, cglist, outputp, outputType, mappingQ, R, 
                                         del Feature_dict[top_cpg]
                                     continue
                             else:# different chromosome
-                                # should write out all the elements in the dict
-                                for out_cpg in list(Feature_dict):
+                                # should write out elements in the dict, that located at the first_C_chr
+                                first_C_chr_cpgs = [ element for element in list(Feature_dict) if element.startswith(first_C_chr) ]
+                                for out_cpg in first_C_chr_cpgs:
                                     for zmw in Feature_dict[out_cpg]:
                                         ZMWline_by_subreads = Create_ZMWline_by_Subreads(out_cpg, zmw, Feature_dict[top_cpg][zmw], scaleFlag)
                                         fout.write(ZMWline_by_subreads.encode('utf-8'))
-                                Feature_dict.clear()# clear all
+                                        del Feature_dict[top_cpg]
                                 processed_read_count = 0
                                 continue
                         else:
