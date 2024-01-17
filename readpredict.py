@@ -608,6 +608,23 @@ def Format_closedZMW(F_template_seq, F_ipdlist, F_pwlist, R_template_seq, R_ipdl
     mat = np.vstack([F_seq_mat_array, F_ipdlist, F_pwlist, R_seq_mat_array, R_ipdlist, R_pwlist, npasses_list])
     return mat
 #
+def Format_openZMW(template_seq, ipdlist, pwlist, npasses):
+    """Freeze, 2024-01-17"""
+    seq_context = list(template_seq)
+    ipdlist = np.asarray(ipdlist, dtype=np.float16)
+    pwlist = np.asarray(pwlist, dtype=np.float16)
+    #
+    total_win_size = len(ipdlist)
+    npasses_list = np.full(total_win_size, npasses)
+    #
+    seq_mat_array = np.zeros((4, total_win_size))
+    #
+    seq_dict = {'A': 0, 'T': 1, 'C': 2, 'G': 3}
+    for index in range(total_win_size):
+        seq_mat_array[seq_dict[seq_context[index]], index] = 1
+    mat = np.vstack([seq_mat_array, ipdlist, pwlist, npasses_list])
+    return mat
+#
 def Buildcglist_dict(cgfile, processingChr="whole_genome"):
     """Freeze,2024-01-04"""
     cglist_dict = defaultdict(list)
@@ -727,11 +744,11 @@ def Aligned_subreadsBam_Feature(bamf, cglist, outputp, outputType, mappingQ, R, 
     """
         2024-01-16,2024-01-03
         INPUT: aligned subreads BAM file with ip/pw tags
-        OUTPUT: outputType == "MoleculeLevel": Single molecule level prediction
+        OUTPUT: outputType == "Feature": Single molecule level prediction
     """
     samfile = pysam.AlignmentFile(bamf, "rb")
     Feature_dict = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(list))))
-    if outputType == "MoleculeLevel":
+    if outputType == "Feature":
         outfile = outputp + ".SingleMol.KFeature.txt.gz"
         fout = gzip.open(outfile, "wb")
         processed_read_count = 0
@@ -816,11 +833,279 @@ def Aligned_subreadsBam_Feature(bamf, cglist, outputp, outputType, mappingQ, R, 
                     ZMWline_by_subreads = Create_ZMWline_by_Subreads(out_cpg, zmw, Feature_dict[top_cpg][zmw])
                     fout.write(ZMWline_by_subreads.encode('utf-8'))
     else:
+        print("error! subreads bam should beoutputType == Feature")
+#
+#
+def Aligned_subreadsBam_Meth(bamf, cglist, outputp, outputType, mappingQ, R, scaleFlag,closedZMW_subreads_model,openZMW_subreads_model):
+    """
+        2024-01-16
+        INPUT: aligned subreads BAM file with ip/pw tags
+        OUTPUT: outputType == "MoleculeLevel": Single molecule level prediction
+    """
+    samfile = pysam.AlignmentFile(bamf, "rb")
+    Feature_dict = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(list))))
+    if outputType == "MoleculeLevel":
+        outfile = outputp + ".SingleMol.pre.txt.gz"
+        fout = gzip.open(outfile, "wb")
+        processed_read_count = 0
+        for read in samfile.fetch():
+            if (not read.is_secondary) and (not read.is_supplementary) and (read.mapping_quality >= mappingQ) and (Matching_ratio_Fun(read) >= 0.85):
+                aln_ref_chr = read.reference_name
+                aln_ref_start = read.reference_start #0-based leftmost coordinate
+                aln_ref_end = read.reference_end
+                overlapping_cpg = find_overlapping_cpg(cglist_sort_increasing = cglist[aln_ref_chr], Ref_chr = aln_ref_chr, Ref_start = aln_ref_start, Ref_end = aln_ref_end)
+                if len(overlapping_cpg) >= 1:
+                    read_ipd_list = read.get_tag("ip")
+                    read_pw_list = read.get_tag("pw")
+                    read_SEQ_string = read.query_sequence
+                    read_is_reverse = read.is_reverse
+                    read_query_length = read.query_length
+                    read_cigartuples = read.cigartuples
+                    read_query_name = read.query_name
+                    zmwname = str(read.query_name.split("/")[0]) + "_" + str(read.query_name.split("/")[1])
+                    cpgPos_on_read = locate_cpgPos_on_SEQ(aln_ref_chr = aln_ref_chr, aln_ref_start = aln_ref_start, read_cigar = read_cigartuples, overlapping_cpg = overlapping_cpg)
+                    # ----------------------------------------------------------------------------------------
+                    # heading or tailing removing
+                    cpgPos_on_read_keys = list(cpgPos_on_read)
+                    for key in cpgPos_on_read_keys:
+                        if cpgPos_on_read[key] < (R+5):
+                            del cpgPos_on_read[key]
+                        else:
+                            break
+                    for key in reversed(cpgPos_on_read_keys):
+                        if cpgPos_on_read[key] > len(read_SEQ_string) - R - 5:
+                            del cpgPos_on_read[key]
+                        else:
+                            break
+                    # ----------------------------------------------------------------------------------------
+                    if len(cpgPos_on_read) >= 1:
+                        all_cpgs = list(cpgPos_on_read)
+                        for index in range(len(cpgPos_on_read)):
+                            cpg = all_cpgs[index]
+                            pos_on_SEQ = cpgPos_on_read[cpg]
+                            # collect subread level features, should be raw value
+                            strand_sign, seq_string, ipd_list, pw_list = SubRead_cpg_K_Feature(pos_on_SEQ, read_is_reverse, read_query_length, read_SEQ_string, read_ipd_list, read_pw_list)
+                            Feature_dict[cpg][zmwname][strand_sign][read_query_name] = [seq_string, ipd_list, pw_list]
+                        # ---
+                        # after reading certain lines, check whether the safe distance reached    
+                        processed_read_count = processed_read_count + 1
+                        # ---
+                        if processed_read_count % 2000 == 0:
+                            sorted_processed_cpgs = sorted(list(Feature_dict), key=lambda x: int(x.split("_")[1]))
+                            first_C_chr, first_C_pos = sorted_processed_cpgs[0].split("_")
+                            last_C_chr, last_C_pos = sorted_processed_cpgs[-1].split("_")
+                            if first_C_chr == last_C_chr:
+                                if int(last_C_pos) - int(first_C_pos) >= 500000:
+                                    # output the top 50% of the CpG in Feature_dict
+                                    top_index = int(len(sorted_processed_cpgs) / 2)
+                                    top_cpgs = sorted_processed_cpgs[0:top_index]
+                                    # -- making predictions and write out to the file --
+                                    for top_cpg in top_cpgs:
+                                        Chr, Pos =  top_cpg.split("_")
+                                        # there could be bug when returning a none
+                                        ClosedZMW_X, ClosedZMW_name, ClosedZMW_passes, OpenZMW_X, OpenZMW_name, OpenZMW_passes = Format_zmw_from_subreads(top_cpg, Feature_dict[top_cpg], R, scaleFlag)
+                                        i = ClosedZMW_X.shape[0]
+                                        j = OpenZMW_X.shape[0]
+                                    # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+                                        # (1) both ClosedZMW and OpenZMW are there
+                                        if i > 0 and j > 0:
+                                            ClosedZMW_X_pred = read_Meth_prediction(ClosedZMW_X, closedZMW_subreads_model)
+                                            OpenZMW_X_pred = read_Meth_prediction(OpenZMW_X, openZMW_subreads_model)
+                                            df_closedzmw_pre = format_zmw_data(Chr = Chr, Pos = Pos, ZMW_name = ClosedZMW_name, ZMW_passes = ClosedZMW_passes, ZMW_X_pred = ClosedZMW_X_pred, ZMW_Type='C')
+                                            df_openzmw_pre = format_zmw_data(Chr = Chr, Pos = Pos, ZMW_name = OpenZMW_name, ZMW_passes = OpenZMW_passes, ZMW_X_pred = OpenZMW_X_pred, ZMW_Type='O')
+                                            merged_df = pd.concat([df_closedzmw_pre, df_openzmw_pre], ignore_index = True)
+                                            merged_df.to_csv(fout, sep='\t', index=False, compression='gzip')
+                                        # (2) only ClosedZMW are there
+                                        if i > 0 and j == 0:
+                                            ClosedZMW_X_pred = read_Meth_prediction(ClosedZMW_X, closedZMW_subreads_model)
+                                            df_closedzmw_pre = format_zmw_data(Chr = Chr, Pos = Pos, ZMW_name = ClosedZMW_name, ZMW_passes = ClosedZMW_passes, ZMW_X_pred = ClosedZMW_X_pred, ZMW_Type='C')
+                                            df_closedzmw_pre.to_csv(fout, sep='\t', index=False, compression='gzip')
+                                        # (3) only OpenZMW are there
+                                        if i == 0 and j > 0:
+                                            OpenZMW_X_pred = read_Meth_prediction(OpenZMW_X, openZMW_subreads_model)
+                                            df_openzmw_pre = format_zmw_data(Chr = Chr, Pos = Pos, ZMW_name = OpenZMW_name, ZMW_passes = OpenZMW_passes, ZMW_X_pred = OpenZMW_X_pred, ZMW_Type='O')
+                                            df_openzmw_pre.to_csv(fout, sep='\t', index=False, compression='gzip')
+                                    # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+                                    processed_read_count = 0
+                                    # remove the top cpgs from the Feature_dict
+                                    for top_cpg in top_cpgs:
+                                        del Feature_dict[top_cpg]
+                                    continue
+                            else:# different chromosome
+                                # should write out elements in the dict, that located at the first_C_chr
+                                first_C_chr_cpgs = [ element for element in list(Feature_dict) if element.startswith(first_C_chr) ]
+                                for out_cpg in first_C_chr_cpgs:
+                                    Chr, Pos =  out_cpg.split("_")
+                                    # there could be bug when returning a none
+                                    ClosedZMW_X, ClosedZMW_name, ClosedZMW_passes, OpenZMW_X, OpenZMW_name, OpenZMW_passes = Format_zmw_from_subreads(out_cpg, Feature_dict[out_cpg], R, scaleFlag)
+                                    i = ClosedZMW_X.shape[0]
+                                    j = OpenZMW_X.shape[0]
+                                # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+                                    # (1) both ClosedZMW and OpenZMW are there
+                                    if i > 0 and j > 0:
+                                        ClosedZMW_X_pred = read_Meth_prediction(ClosedZMW_X, closedZMW_subreads_model)
+                                        OpenZMW_X_pred = read_Meth_prediction(OpenZMW_X, openZMW_subreads_model)
+                                        df_closedzmw_pre = format_zmw_data(Chr = Chr, Pos = Pos, ZMW_name = ClosedZMW_name, ZMW_passes = ClosedZMW_passes, ZMW_X_pred = ClosedZMW_X_pred, ZMW_Type='C')
+                                        df_openzmw_pre = format_zmw_data(Chr = Chr, Pos = Pos, ZMW_name = OpenZMW_name, ZMW_passes = OpenZMW_passes, ZMW_X_pred = OpenZMW_X_pred, ZMW_Type='O')
+                                        merged_df = pd.concat([df_closedzmw_pre, df_openzmw_pre], ignore_index = True)
+                                        merged_df.to_csv(fout, sep='\t', index=False, compression='gzip')
+                                    # (2) only ClosedZMW are there
+                                    if i > 0 and j == 0:
+                                        ClosedZMW_X_pred = read_Meth_prediction(ClosedZMW_X, closedZMW_subreads_model)
+                                        df_closedzmw_pre = format_zmw_data(Chr = Chr, Pos = Pos, ZMW_name = ClosedZMW_name, ZMW_passes = ClosedZMW_passes, ZMW_X_pred = ClosedZMW_X_pred, ZMW_Type='C')
+                                        df_closedzmw_pre.to_csv(fout, sep='\t', index=False, compression='gzip')
+                                    # (3) only OpenZMW are there
+                                    if i == 0 and j > 0:
+                                        OpenZMW_X_pred = read_Meth_prediction(OpenZMW_X, openZMW_subreads_model)
+                                        df_openzmw_pre = format_zmw_data(Chr = Chr, Pos = Pos, ZMW_name = OpenZMW_name, ZMW_passes = OpenZMW_passes, ZMW_X_pred = OpenZMW_X_pred, ZMW_Type='O')
+                                        df_openzmw_pre.to_csv(fout, sep='\t', index=False, compression='gzip')
+                                # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+                                    del Feature_dict[out_cpg]
+                                processed_read_count = 0
+                                continue
+                        else:
+                            continue
+        # ------------------------
+        # 2024-01-01: at last, all the things in Feature_dict should be written out
+        if Feature_dict:
+            for out_cpg in list(Feature_dict):
+                Chr, Pos =  out_cpg.split("_")
+                # there could be bug when returning a none
+                ClosedZMW_X, ClosedZMW_name, ClosedZMW_passes, OpenZMW_X, OpenZMW_name, OpenZMW_passes = Format_zmw_from_subreads(out_cpg, Feature_dict[out_cpg], R, scaleFlag)
+                i = ClosedZMW_X.shape[0]
+                j = OpenZMW_X.shape[0]
+            # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+                # (1) both ClosedZMW and OpenZMW are there
+                if i > 0 and j > 0:
+                    ClosedZMW_X_pred = read_Meth_prediction(ClosedZMW_X, closedZMW_subreads_model)
+                    OpenZMW_X_pred = read_Meth_prediction(OpenZMW_X, openZMW_subreads_model)
+                    df_closedzmw_pre = format_zmw_data(Chr = Chr, Pos = Pos, ZMW_name = ClosedZMW_name, ZMW_passes = ClosedZMW_passes, ZMW_X_pred = ClosedZMW_X_pred, ZMW_Type='C')
+                    df_openzmw_pre = format_zmw_data(Chr = Chr, Pos = Pos, ZMW_name = OpenZMW_name, ZMW_passes = OpenZMW_passes, ZMW_X_pred = OpenZMW_X_pred, ZMW_Type='O')
+                    merged_df = pd.concat([df_closedzmw_pre, df_openzmw_pre], ignore_index = True)
+                    merged_df.to_csv(fout, sep='\t', index=False, compression='gzip')
+                # (2) only ClosedZMW are there
+                if i > 0 and j == 0:
+                    ClosedZMW_X_pred = read_Meth_prediction(ClosedZMW_X, closedZMW_subreads_model)
+                    df_closedzmw_pre = format_zmw_data(Chr = Chr, Pos = Pos, ZMW_name = ClosedZMW_name, ZMW_passes = ClosedZMW_passes, ZMW_X_pred = ClosedZMW_X_pred, ZMW_Type='C')
+                    df_closedzmw_pre.to_csv(fout, sep='\t', index=False, compression='gzip')
+                # (3) only OpenZMW are there
+                if i == 0 and j > 0:
+                    OpenZMW_X_pred = read_Meth_prediction(OpenZMW_X, openZMW_subreads_model)
+                    df_openzmw_pre = format_zmw_data(Chr = Chr, Pos = Pos, ZMW_name = OpenZMW_name, ZMW_passes = OpenZMW_passes, ZMW_X_pred = OpenZMW_X_pred, ZMW_Type='O')
+                    df_openzmw_pre.to_csv(fout, sep='\t', index=False, compression='gzip')
+            # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+    else:
         print("error! subreads bam should beoutputType == MoleculeLeve")
+#
+#
+def format_zmw_data(Chr, Pos, ZMW_name, ZMW_passes, ZMW_X_pred, ZMW_Type):
+    """
+    ZMW_Type = 'C' or 'O'
+    """
+    ZMW_X_pred_bi = (ZMW_X_pred >= 0.5).astype(int)
+    zmw_count = len(ZMW_name)
+    #
+    df_pre = pd.DataFrame({
+        "Chr": [Chr] * zmw_count,
+        "Pos1": [Pos] * zmw_count,
+        "ZMWid": ZMW_name,
+        "ZMWtype": [ZMW_Type] * zmw_count,
+        "subdepth": ZMW_passes,
+        "Hap": ['X'] * zmw_count,
+        "HapBlk": ['X'] * zmw_count,
+        "strand": ['+/-'] * zmw_count,
+        "y_pred": ZMW_X_pred,
+        "y_pred_bi": ZMW_X_pred_bi
+    })
+    return df_pre
+#
+#
+def Format_zmw_from_subreads(top_cpg, Feature_dict_cpg, R, scaleFlag):
+    """"
+    2024-01-16
+    INPUT: Feature_dict_cpg[zmw][strand][read]
+    OUTPUT: ClosedZMW_dict=['Info','X'], 'Info'='zmwname'
+            OpenZMW_dict=['Info','X'], 'Info'='zmwname'
+    """
+    ClosedZMW_X= np.empty((len(Feature_dict_cpg), 13, 2*R+1))
+    ClosedZMW_name = [0] * len(Feature_dict_cpg)
+    ClosedZMW_passes = [0] * len(Feature_dict_cpg)
+    i = 0
+    #
+    OpenZMW_X = np.empty((len(Feature_dict_cpg), 7, 2*R+1))
+    OpenZMW_name = [0] * len(Feature_dict_cpg)
+    OpenZMW_passes = [0] * len(Feature_dict_cpg)
+    j = 0
+    #
+    for zmw in list(Feature_dict_cpg):
+        zmw_features = Feature_dict_cpg[zmw]
+        F_template_seq, F_ipd_list, F_pw_list, R_template_seq, R_ipd_list, R_pw_list = Sum_Subreads_ZMW(zmw_features, scaleFlag)
+
+        # closedZMW
+        if ('R' in Feature_dict_cpg[zmw] and 'F' in Feature_dict_cpg[zmw]):
+            npasses = len(Feature_dict_cpg[zmw]['F']) +  len(Feature_dict_cpg[zmw]['R'])
+            closezmw_mat = Format_closedZMW(F_template_seq, F_ipd_list, F_pw_list, R_template_seq, R_ipd_list, R_pw_list, npasses)
+            ClosedZMW_X[i] = closezmw_mat
+            ClosedZMW_name[i] = zmw
+            ClosedZMW_passes[i] = npasses
+            i = i + 1
+
+        # openZMW
+        else:
+            if F_template_seq == "NA":
+                npasses = len(Feature_dict_cpg[zmw]['R'])
+                openZMW_mat = Format_openZMW(template_seq = R_template_seq, ipdlist = R_ipd_list, pwlist = R_pw_list, npasses = npasses)
+            if R_template_seq == "NA":
+                npasses = len(Feature_dict_cpg[zmw]['F'])
+                openZMW_mat = Format_openZMW(template_seq = F_template_seq, ipdlist = F_ipd_list, pwlist = F_pw_list, npasses = npasses)
+            OpenZMW_X[j] = openZMW_mat
+            OpenZMW_name[j] = zmw
+            OpenZMW_passes = npasses
+            j = j + 1
+    return i,j,(ClosedZMW_X[0:i,:,:], ClosedZMW_name[0:i,:,:], ClosedZMW_passes[0:i,:,:], OpenZMW_X[0:j,:,:], OpenZMW_name[0:j,:,:], OpenZMW_passes[0:j,:,:])
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 #
 #
 def SubRead_cpg_K_Feature(pos_on_SEQ, read_is_reverse, read_query_length, read_SEQ_string, read_ipd_list, read_pw_list):
     """
+    Freeze, 2024-01-17
         2024-01-03: subreads keep raw ipd/pw for each of them
         2024-01-02: return Seq_context_on_Template(3'->5'), ipd, pw
     """
@@ -831,18 +1116,20 @@ def SubRead_cpg_K_Feature(pos_on_SEQ, read_is_reverse, read_query_length, read_S
         strand_sign ='F'# 'Ref(+)'#Template strand sign 
         ipd_list = read_ipd_list[L_pos:R_pos]
         pw_list = read_pw_list[L_pos:R_pos]
-        # template sequence context in 3'->5' direction. (ToDo)the position should be with respected to SEQ? HiFi_function error??
+        # template sequence context in 3'->5' direction.
         seq_string = (read_SEQ_string[pos_on_SEQ-R:pos_on_SEQ+R+1])[::-1]
+
         #
     else:# subreads mapped to Ref(+), synthesising the Ref(-)_template, ipd/pw are therefor with respected to Ref(-). Template is Ref(-), and should be adjusted to 3'->5'
         adjust_pos_on_read = pos_on_SEQ + 1#5'->3' position on read
-        L_pos = adjust_pos_on_read - R - 1#5'->3' position on read
-        R_pos = adjust_pos_on_read + R#5'->3' position on read
+        L_pos = adjust_pos_on_read - R#5'->3' position on read
+        R_pos = adjust_pos_on_read + R + 1#5'->3' position on read
         strand_sign = 'R'# 'Ref(-)'
         ipd_list = read_ipd_list[L_pos:R_pos]
         pw_list = read_pw_list[L_pos:R_pos]
-        seq_string = str_complementary(read_SEQ_string)[pos_on_SEQ-R:pos_on_SEQ+R+1]
-    return strand_sign,seq_string,ipd_list,pw_list
+        seq_string = str_complementary(read_SEQ_string)[pos_on_SEQ-R+1:pos_on_SEQ+R+1+1]
+        seq_string = str_complementary(read_SEQ_string)[L_pos:R_pos]
+    return strand_sign, seq_string, ipd_list,pw_list
 #
 #
 def Create_ZMWline_by_Subreads(cpg, zmw, zmw_Feature_Dict, scaleFlag=True):
@@ -878,6 +1165,7 @@ def Create_ZMWline_by_Subreads(cpg, zmw, zmw_Feature_Dict, scaleFlag=True):
 #
 def Sum_Subreads_ZMW(ZMW_dict_Feature, scaleFlag=True):
     """
+    INPUT shape: Feature_dict_cpg[strand][read]
     2024-01-02: both OpenZMW and ClosedZMW should be processed
     INPUT: ZMW_dict_Feature is a dictory, but 'F' or 'R' could not exist, in situations of openZMW
 
@@ -912,7 +1200,8 @@ def Sum_Subreads_ZMW(ZMW_dict_Feature, scaleFlag=True):
         ipd_arrays = []
         pw_arrays = []
         seqstring_arrays = []
-
+        #
+        # pileup the reads together
         for read in ZMW_dict_Feature[strand]:
             # Create the arrays for the current read and append them to the list
             seqstring_arrays.append(ZMW_dict_Feature[strand][read][0])
@@ -929,6 +1218,7 @@ def Sum_Subreads_ZMW(ZMW_dict_Feature, scaleFlag=True):
         ccs_ipd_array = np.mean(ipd_arrays, axis = 0, keepdims = True)
         ccs_pw_array = np.mean(pw_arrays, axis = 0, keepdims = True)
         #
+        # bug exist, 2024-01-17
         if scaleFlag:
             MEAN_ipd_array = np.mean(ccs_ipd_array)
             MEAN_pw_array = np.mean(ccs_pw_array)
@@ -963,11 +1253,10 @@ def Sum_Subreads_ZMW(ZMW_dict_Feature, scaleFlag=True):
 #
 def get_ccs(seqstring_arrays):
     """
-    2024-01-02:
+    Freeze, 2024-01-17
     seqstring_arrays=['AAATTTCCCGGG','AAATTTCCCGGG','AAATTTCCCGGG','TAATTTCCCGGG','TAATTTCCCGGG']
     code is created by chatCPT
     """
-    # seqstring_arrays = ['AAATTTCCCGGG', 'AAATTTCCCGGG', 'TAATTTCCCGGG', 'TAATTTCCCGGG']
     # Transpose the array to work column-wise
     seqstring_arrays_transposed = list(zip(*seqstring_arrays))
     # Calculate the consensus sequence column-wise
