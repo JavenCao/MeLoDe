@@ -736,13 +736,9 @@ def HiFiRead_cpg_K_Feature(pos_on_SEQ, read_is_reverse, R, read_query_length, re
     return HiFiread_template_seq, HiFiread_template_ipd_list, HiFiread_template_pw_list, HiFiread_com_template_seq, HiFiread_com_template_ipd_list, HiFiread_com_template_pw_list
 #
 #
-# 2023-12-29: Aligned subreads feature extraction
-# 2024-01-02: Revised
-# 2024-01-03: Revised
-# 2024-01-16: Revised
 def Aligned_subreadsBam_Feature(bamf, cglist, outputp, outputType, mappingQ, R, scaleFlag):
     """
-        2024-01-16,2024-01-03
+        2024-01-17,2024-01-16,2024-01-03
         INPUT: aligned subreads BAM file with ip/pw tags
         OUTPUT: outputType == "Feature": Single molecule level prediction
     """
@@ -838,7 +834,7 @@ def Aligned_subreadsBam_Feature(bamf, cglist, outputp, outputType, mappingQ, R, 
 #
 def Aligned_subreadsBam_Meth(bamf, cglist, outputp, outputType, mappingQ, R, scaleFlag,closedZMW_subreads_model,openZMW_subreads_model):
     """
-        2024-01-16
+        2024-01-16,2024-01-19
         INPUT: aligned subreads BAM file with ip/pw tags
         OUTPUT: outputType == "MoleculeLevel": Single molecule level prediction
     """
@@ -894,14 +890,14 @@ def Aligned_subreadsBam_Meth(bamf, cglist, outputp, outputType, mappingQ, R, sca
                             sorted_processed_cpgs = sorted(list(Feature_dict), key=lambda x: int(x.split("_")[1]))
                             first_C_chr, first_C_pos = sorted_processed_cpgs[0].split("_")
                             last_C_chr, last_C_pos = sorted_processed_cpgs[-1].split("_")
-                            if first_C_chr == last_C_chr:
+                            if first_C_chr == last_C_chr:# same chromosome
                                 if int(last_C_pos) - int(first_C_pos) >= 500000:
                                     # output the top 50% of the CpG in Feature_dict
                                     top_index = int(len(sorted_processed_cpgs) / 2)
                                     top_cpgs = sorted_processed_cpgs[0:top_index]
                                     # -- making predictions and write out to the file --
                                     for top_cpg in top_cpgs:
-                                        Chr, Pos =  top_cpg.split("_")
+                                        Chr, Pos = top_cpg.split("_")
                                         # there could be bug when returning a none
                                         ClosedZMW_X, ClosedZMW_name, ClosedZMW_passes, OpenZMW_X, OpenZMW_name, OpenZMW_passes = Format_zmw_from_subreads(top_cpg, Feature_dict[top_cpg], R, scaleFlag)
                                         i = ClosedZMW_X.shape[0]
@@ -930,12 +926,12 @@ def Aligned_subreadsBam_Meth(bamf, cglist, outputp, outputType, mappingQ, R, sca
                                     # remove the top cpgs from the Feature_dict
                                     for top_cpg in top_cpgs:
                                         del Feature_dict[top_cpg]
-                                    continue
+                                    continue#continue to read lines from files
                             else:# different chromosome
                                 # should write out elements in the dict, that located at the first_C_chr
                                 first_C_chr_cpgs = [ element for element in list(Feature_dict) if element.startswith(first_C_chr) ]
                                 for out_cpg in first_C_chr_cpgs:
-                                    Chr, Pos =  out_cpg.split("_")
+                                    Chr, Pos = out_cpg.split("_")
                                     # there could be bug when returning a none
                                     ClosedZMW_X, ClosedZMW_name, ClosedZMW_passes, OpenZMW_X, OpenZMW_name, OpenZMW_passes = Format_zmw_from_subreads(out_cpg, Feature_dict[out_cpg], R, scaleFlag)
                                     i = ClosedZMW_X.shape[0]
@@ -960,13 +956,14 @@ def Aligned_subreadsBam_Meth(bamf, cglist, outputp, outputType, mappingQ, R, sca
                                         df_openzmw_pre = format_zmw_data(Chr = Chr, Pos = Pos, ZMW_name = OpenZMW_name, ZMW_passes = OpenZMW_passes, ZMW_X_pred = OpenZMW_X_pred, ZMW_Type='O')
                                         df_openzmw_pre.to_csv(fout, sep='\t', index=False, compression='gzip')
                                 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+                                for out_cpg in first_C_chr_cpgs:
                                     del Feature_dict[out_cpg]
                                 processed_read_count = 0
                                 continue
                         else:
                             continue
         # ------------------------
-        # 2024-01-01: at last, all the things in Feature_dict should be written out
+        # 2024-01-01: at last, all the remaining things in Feature_dict should be written out
         if Feature_dict:
             for out_cpg in list(Feature_dict):
                 Chr, Pos =  out_cpg.split("_")
@@ -994,12 +991,14 @@ def Aligned_subreadsBam_Meth(bamf, cglist, outputp, outputType, mappingQ, R, sca
                     df_openzmw_pre = format_zmw_data(Chr = Chr, Pos = Pos, ZMW_name = OpenZMW_name, ZMW_passes = OpenZMW_passes, ZMW_X_pred = OpenZMW_X_pred, ZMW_Type='O')
                     df_openzmw_pre.to_csv(fout, sep='\t', index=False, compression='gzip')
             # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+        fout.close() 
     else:
         print("error! subreads bam should beoutputType == MoleculeLeve")
 #
 #
 def format_zmw_data(Chr, Pos, ZMW_name, ZMW_passes, ZMW_X_pred, ZMW_Type):
     """
+    Freeze, 2024-01-19
     ZMW_Type = 'C' or 'O'
     """
     ZMW_X_pred_bi = (ZMW_X_pred >= 0.5).astype(int)
@@ -1027,7 +1026,7 @@ def Format_zmw_from_subreads(top_cpg, Feature_dict_cpg, R, scaleFlag):
     OUTPUT: ClosedZMW_dict=['Info','X'], 'Info'='zmwname'
             OpenZMW_dict=['Info','X'], 'Info'='zmwname'
     """
-    ClosedZMW_X= np.empty((len(Feature_dict_cpg), 13, 2*R+1))
+    ClosedZMW_X = np.empty((len(Feature_dict_cpg), 13, 2*R+1))
     ClosedZMW_name = [0] * len(Feature_dict_cpg)
     ClosedZMW_passes = [0] * len(Feature_dict_cpg)
     i = 0
@@ -1040,7 +1039,7 @@ def Format_zmw_from_subreads(top_cpg, Feature_dict_cpg, R, scaleFlag):
     for zmw in list(Feature_dict_cpg):
         zmw_features = Feature_dict_cpg[zmw]
         F_template_seq, F_ipd_list, F_pw_list, R_template_seq, R_ipd_list, R_pw_list = Sum_Subreads_ZMW(zmw_features, scaleFlag)
-
+        #
         # closedZMW
         if ('R' in Feature_dict_cpg[zmw] and 'F' in Feature_dict_cpg[zmw]):
             npasses = len(Feature_dict_cpg[zmw]['F']) +  len(Feature_dict_cpg[zmw]['R'])
@@ -1049,7 +1048,7 @@ def Format_zmw_from_subreads(top_cpg, Feature_dict_cpg, R, scaleFlag):
             ClosedZMW_name[i] = zmw
             ClosedZMW_passes[i] = npasses
             i = i + 1
-
+        #
         # openZMW
         else:
             if F_template_seq == "NA":
@@ -1062,45 +1061,7 @@ def Format_zmw_from_subreads(top_cpg, Feature_dict_cpg, R, scaleFlag):
             OpenZMW_name[j] = zmw
             OpenZMW_passes = npasses
             j = j + 1
-    return i,j,(ClosedZMW_X[0:i,:,:], ClosedZMW_name[0:i,:,:], ClosedZMW_passes[0:i,:,:], OpenZMW_X[0:j,:,:], OpenZMW_name[0:j,:,:], OpenZMW_passes[0:j,:,:])
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    return (ClosedZMW_X[0:i,:,:], ClosedZMW_name[0:i,:,:], ClosedZMW_passes[0:i,:,:], OpenZMW_X[0:j,:,:], OpenZMW_name[0:j,:,:], OpenZMW_passes[0:j,:,:])
 #
 #
 def SubRead_cpg_K_Feature(pos_on_SEQ, read_is_reverse, read_query_length, read_SEQ_string, read_ipd_list, read_pw_list):
@@ -1165,6 +1126,7 @@ def Create_ZMWline_by_Subreads(cpg, zmw, zmw_Feature_Dict, scaleFlag=True):
 #
 def Sum_Subreads_ZMW(ZMW_dict_Feature, scaleFlag=True):
     """
+    Freeze, 2024-01-19
     INPUT shape: Feature_dict_cpg[strand][read]
     2024-01-02: both OpenZMW and ClosedZMW should be processed
     INPUT: ZMW_dict_Feature is a dictory, but 'F' or 'R' could not exist, in situations of openZMW
@@ -1214,12 +1176,14 @@ def Sum_Subreads_ZMW(ZMW_dict_Feature, scaleFlag=True):
         #.........[4,5,6], then mean is [2.5,3.5,4.5] by column
         # if [1,2,3], then keep the original value [1,2,3]          
         #
-        # take the mean for ipd and pw 
-        ccs_ipd_array = np.mean(ipd_arrays, axis = 0, keepdims = True)
-        ccs_pw_array = np.mean(pw_arrays, axis = 0, keepdims = True)
+        if len(ipd_arrays) > 1:
+            ccs_ipd_array = np.mean(ipd_arrays, axis = 0, keepdims = True)
+            ccs_pw_array = np.mean(pw_arrays, axis = 0, keepdims = True)
+        else:
+            ccs_ipd_array = ipd_arrays
+            ccs_pw_array = pw_arrays
         #
-        # bug exist, 2024-01-17
-        if scaleFlag:
+        if scaleFlag:# need to scale the feature
             MEAN_ipd_array = np.mean(ccs_ipd_array)
             MEAN_pw_array = np.mean(ccs_pw_array)
             STD_ipd_array = np.std(MEAN_ipd_array)
@@ -1235,7 +1199,7 @@ def Sum_Subreads_ZMW(ZMW_dict_Feature, scaleFlag=True):
             else:
                 out_ccs_pw_array = ccs_pw_array
         #
-        else:
+        else:# don't need to scale the feature, use the raw value
             out_ccs_ipd_array = ccs_ipd_array
             out_ccs_pw_array = ccs_pw_array
         #
