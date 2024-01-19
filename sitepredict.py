@@ -1,6 +1,3 @@
-# Site-level prediction
-# INPUT-1: HiFi-read prediction (read-level_predict.txt or ModBam.bam file with MM/ML tags)
-# INPUT-2: ALL_the_molecule prediction (read-level_predict.txt) or "NA"
 import gzip
 import argparse
 import numpy as np
@@ -12,8 +9,8 @@ from sitepredict import *
 #
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-hifizmw", "--HiFiZMWpre", help="HiFi reads - single molecule level prediction")
-    parser.add_argument("-allzmw", "--ALLZMWpre", default="NA", help="ZMW prediction - all molecules' predictions")
+    parser.add_argument("-hifizmw", "--HiFiZMWpre", help="HiFi reads - single molecule level prediction. File format: txt.gz")
+    parser.add_argument("-allzmw", "--ALLZMWpre", default="NA", help="ZMW prediction - all molecules' predictions. File format: txt.gz")
     parser.add_argument("-minZMWdep", "--minZMWdepth",help="min ZMW_molecule/HiFi_reads/CCS_reads depth")
     parser.add_argument("-r","--windowRadius", help="how many CpG sites in a sliding window? (2 * r + 1)")
     parser.add_argument("-j", "--modeljson", help="json file of the model, json file")
@@ -25,7 +22,7 @@ if __name__ == "__main__":
     # --------
     args = get_args()
     #
-    ZMWprefile_HiFi = args.HiFiZMWpre
+    ZMWprefile_HiFi_raw = args.HiFiZMWpre
     ALLZMW_prefile = args.ALLZMWpre
     minZMWdepth = int(args.minZMWdepth)
     R = int(args.windowRadius)
@@ -74,7 +71,7 @@ else:
 #
 def normZMWprediction_HCO(ZMWprefile_HiFi,  ALLZMW_prefile, minZMWdepth):
     """
-    2024-01-09:
+    Freeze,2024-01-19
         INPUT: HiFi read level prediction
                nonHiFi ZMW level prediction
         Return: ZMWprobDict_norm = [ [ HiFi reads ] [ nonHiFi-subreads-closedZMW ] [ nonHiFi-subreads-openZMW ] ]
@@ -151,7 +148,7 @@ def get_normalized_histo(probs):
 #
 def CreateDataMatrix_distance_testing(ZMWprobDict_norm, R):
     """
-    2024-01-09:
+    Freeze 2024-01-19:
         Input: ZMWprobDict_norm = [ [ HiFi reads ] [ nonHiFi-subreads-closedZMW ] [ nonHiFi-subreads-openZMW ] ]
         Return:
     """
