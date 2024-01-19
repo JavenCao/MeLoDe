@@ -23,20 +23,15 @@ Next, align the 5mC tagged ModBam to the reference genome using pbmm2:
 
 **Step2:CpG-site level 5mC frequency estimation**
 
-        ldlr_site --bamfile Aligned_Sample_Name.5mc.mod.unaligned.bam \
-                  --cpgbed cpg_motif.pos \
-                  --outfile Site.5mC.fre
+Decode the mod.bam with MM/ML tag into read level prediction:
 
-Output file of "Site.5mC.fre" reports DNA 5mC frequency on CpG site.
+        ldlr_extract --modbam Aligned_Sample_Name.5mc.mod.unaligned.bam \
+                     --outfile Hpre.Read.level.meth.prob.txt.gz
+        
+        ldlr_site --Hpre Hpre.Read.level.meth.prob.txt.gz \
+                  --outfile HiFi.Site.5mC.fre
 
-Each line of "cpg_motif.pos" is a CpG motif coordinate (1-based) on the reference genome, such as:
-
-        chr1	10469
-        chr1	10471
-        chr1	10484
-        chr1	10489
-        ...
-
+Output file of "HiFi.Site.5mC.fre" reports DNA 5mC frequency on CpG site.
 
 ## Workflow of LDLR-Meth in the low depth design
 
@@ -69,6 +64,15 @@ For all the molecules by subreads (ClosedZMW and OpenZMW):
                   --outprefix Sample_Name \
                   --cpgbed cpg_motif.pos \
                   --outputType MoleculeLevel
+
+
+Each line of "cpg_motif.pos" is a CpG motif coordinate (1-based) on the reference genome, such as:
+
+        chr1	10469
+        chr1	10471
+        chr1	10484
+        chr1	10489
+        ...
 
 **Step4:** Using molecules with and without HiFi reads for CpG site level DNAm frequency estimation:
 
