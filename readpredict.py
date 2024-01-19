@@ -42,7 +42,11 @@ def get_args():
     # (3) models
     # (4) subreads
     #
-    parser.add_argument("-openZMW", "--OpenZMWFlag", required=False, help="By Subreads data")
+    parser.add_argument("-jc", "--cmodeljson",required=False,  help="closedZMW subreads, json file of the model, json file")
+    parser.add_argument("-wc", "--cmodelweights", required=False, help="closedZMW subreads, weights of the model, h5 file")
+    parser.add_argument("-jo", "--omodeljson",required=False,  help="openZMW subreads, json file of the model, json file")
+    parser.add_argument("-wo", "--omodelweights", required=False, help="openZMW subreads, weights of the model, h5 file")
+
     return parser.parse_args()
 #  
 #
@@ -81,40 +85,13 @@ if __name__ == "__main__":
     if args.Scale:
         scaleFlag = args.Scale
     #
-    #
-    if inputType == "unaligned":
-        if outputType == "Feature":
-            outfile = outputp + ".Kmat.txt.gz"
-            TOP_HiFiReadsFeature(Topbam=bamf, outfile=outfile, minsubdep=minsubdep, maxsubdep=maxsubdep, R=R, scaleFlag=scaleFlag)
-        if outputType == "ModBam":
-            if args.modeljson and args.modelweights:
-                modeljsonFile = args.modeljson
-                modelweightsFile = args.modelweights
-                json_file = open(modeljsonFile, 'r')
-                loaded_model_json = json_file.read()
-                json_file.close()
-                loaded_model = model_from_json(loaded_model_json)
-                loaded_model.load_weights(modelweightsFile)
-                outputfile = outputp + ".5mc.mod.unaligned.bam"
-                TOP_HiFiReadsMeth(Topbam=bamf, modTopbam=outputfile, minsubdep=minsubdep, maxsubdep=maxsubdep, R=R, scaleFlag=scaleFlag, KiFlag=KiFlag, loaded_model=loaded_model)
-            else:
-                print("error! Please input model and model weights")
-    #    
-    #
-    if inputType == "aligned":
-        if outputType == "Feature":
-            if args.cpgbed:
-                cgfile = args.cpgbed
-                cglist = Buildcglist_dict(cgfile, processingChr)
+    if datatype == "HIFI":
+        if inputType == "unaligned":
+            if outputType == "Feature":
                 outfile = outputp + ".Kmat.txt.gz"
-                Aligned_HiFiReadsFeature(bamf, cglist, outfile, minsubdep, maxsubdep, mappingQ, R, scaleFlag)
-            else:
-                print("error! Please input cpgbed file")
-
-        else:
-
-            if outputType == "ModBam" or outputType == "MoleculeLevel":
-                if args.modeljson and args.modelweights and args.cpgbed:
+                TOP_HiFiReadsFeature(Topbam=bamf, outfile=outfile, minsubdep=minsubdep, maxsubdep=maxsubdep, R=R, scaleFlag=scaleFlag)
+            if outputType == "ModBam":
+                if args.modeljson and args.modelweights:
                     modeljsonFile = args.modeljson
                     modelweightsFile = args.modelweights
                     json_file = open(modeljsonFile, 'r')
@@ -122,13 +99,57 @@ if __name__ == "__main__":
                     json_file.close()
                     loaded_model = model_from_json(loaded_model_json)
                     loaded_model.load_weights(modelweightsFile)
+                    outputfile = outputp + ".5mc.mod.unaligned.bam"
+                    TOP_HiFiReadsMeth(Topbam=bamf, modTopbam=outputfile, minsubdep=minsubdep, maxsubdep=maxsubdep, R=R, scaleFlag=scaleFlag, KiFlag=KiFlag, loaded_model=loaded_model)
+                else:
+                    print("error! Please input model and model weights")
+        #    
+        #
+        if inputType == "aligned":
+            if outputType == "Feature":
+                if args.cpgbed:
                     cgfile = args.cpgbed
                     cglist = Buildcglist_dict(cgfile, processingChr)
-                    Aligned_HiFiReadsMeth(bamf, cglist, outputp, outputType, minsubdep, maxsubdep, mappingQ, R, scaleFlag, KiFlag, loaded_model)
+                    outfile = outputp + ".Kmat.txt.gz"
+                    Aligned_HiFiReadsFeature(bamf, cglist, outfile, minsubdep, maxsubdep, mappingQ, R, scaleFlag)
                 else:
-                    print("error! Please input model file, weights file and cpg_position file")
+                    print("error! Please input cpgbed file")
+
             else:
-                print("error! outputType should be ModBam or MoleculeLevel")
+
+                if outputType == "ModBam" or outputType == "MoleculeLevel":
+                    if args.modeljson and args.modelweights and args.cpgbed:
+                        modeljsonFile = args.modeljson
+                        modelweightsFile = args.modelweights
+                        json_file = open(modeljsonFile, 'r')
+                        loaded_model_json = json_file.read()
+                        json_file.close()
+                        loaded_model = model_from_json(loaded_model_json)
+                        loaded_model.load_weights(modelweightsFile)
+                        cgfile = args.cpgbed
+                        cglist = Buildcglist_dict(cgfile, processingChr)
+                        Aligned_HiFiReadsMeth(bamf, cglist, outputp, outputType, minsubdep, maxsubdep, mappingQ, R, scaleFlag, KiFlag, loaded_model)
+                    else:
+                        print("error! Please input model file, weights file and cpg_position file")
+                else:
+                    print("error! outputType should be ModBam or MoleculeLevel")
+    #
+    if datatype == "SUBSEAD":
+        if outputType == "Feature":
+            if args.cpgbed:
+                cgfile = args.cpgbed
+                cglist = Buildcglist_dict(cgfile, processingChr)
+                outfile = outputp + ".Kmat.txt.gz"
+                Aligned_subreadsBam_Feature(bamf, cglist, outputp, outputType, mappingQ, R, scaleFlag)
+            else:
+                print("error! Please input cpgbed file")
+        if outputType == "MoleculeLevel":
+            if args.modeljson and args.modelweights:
+                closedZMW_subreads_model = model.load
+                openZMW_subreads_model = model.load
+                Aligned_subreadsBam_Meth(bamf, cglist, outputp, outputType, mappingQ, R, scaleFlag,closedZMW_subreads_model,openZMW_subreads_model)
+            else:
+                print("error! Please input model file, weights file and cpg_position file")
 else:
     pass
 #
