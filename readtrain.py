@@ -31,7 +31,7 @@ if __name__ == "__main__":
     outdir_tmp = outdir + "/tmp"# npz files will be writen into this folder
     os.makedirs(outdir_tmp, exist_ok=True)
     strand_flag = args.StrandResolution
-    cpus = args.cpus
+    cpus = int(args.cpus)
     #
     # - - - - - - - - - - - - - -
     # step1: create npz files
