@@ -106,7 +106,7 @@ def Create_Read_npz_file(FetureFile, status, maxZMW, outdir):
                 y = [status] * maxZMW
         if i_c > 0:
             outputfile_name = f"{outdir}/status_{status}.Feature.ZMW.chunk{i_c_file}.npz"
-            np.savez_compressed(outputfile_name, X=x[:i_c], y=np.array(y))
+            np.savez_compressed(outputfile_name, X=x[:i_c], y=np.array(y[:i_c]))
     return winSize
 #
 #
@@ -159,7 +159,7 @@ def ZMWmeth_model_training(Train_npz_file, winsize, FileBatch_Size, strand_flag,
             epochs=70,
             validation_data=test_dataset,
             validation_steps=len(validation_file_list)//FileBatch_Size,
-            verbose=2,
+            verbose=1,
             callbacks=[early_stopping, CheckNanCallback(train_dataset)],
             use_multiprocessing=True, workers=cpus,
             max_queue_size=10000)
