@@ -819,7 +819,7 @@ def Aligned_subreadsBam_Feature(bamf, cglist, outputp, outputType, mappingQ, R, 
                             # > sorted_a = sorted(a, key=lambda x: (b.index(x.split('_')[0]), int(x.split('_')[1])))
                             # > sorted_a
                             # > ['chr1_30', 'chr1_33', 'chr1_40', 'chr1_80', 'chr2_10', 'chr2_100']
-                            sorted_processed_cpgs = sorted(chromosome_order_list, key=lambda x: (x.split('_')[0], int(x.split('_')[1])))                            
+                            sorted_processed_cpgs = sorted(list(Feature_dict), key=lambda x: (chromosome_order_list.index(x.split('_')[0]), int(x.split('_')[1])))
                             first_C_chr, first_C_pos = sorted_processed_cpgs[0].split("_")
                             last_C_chr, last_C_pos = sorted_processed_cpgs[-1].split("_")
                             if first_C_chr == last_C_chr:
@@ -916,7 +916,7 @@ def Aligned_subreadsBam_Meth(bamf, cglist, outputp, outputType, mappingQ, R, sca
                         processed_read_count = processed_read_count + 1
                         # ---
                         if processed_read_count % 2000 == 0:
-                            sorted_processed_cpgs = sorted(chromosome_order_list, key=lambda x: (x.split('_')[0], int(x.split('_')[1])))
+                            sorted_processed_cpgs = sorted(list(Feature_dict), key=lambda x: (chromosome_order_list.index(x.split('_')[0]), int(x.split('_')[1])))
                             first_C_chr, first_C_pos = sorted_processed_cpgs[0].split("_")
                             last_C_chr, last_C_pos = sorted_processed_cpgs[-1].split("_")
                             if first_C_chr == last_C_chr:# same chromosome
@@ -1309,4 +1309,40 @@ def Con_posSEQ_to_posRead(read_is_reverse, read_length, pos_on_SEQ_dict):
             pos_on_top = read_length - pos_on_SEQ - 1
             pos_on_top_strand[cpg] = pos_on_top
     return pos_on_top_strand
-
+#
+# 2024-01-23
+# below are under development for the purpose of creating cpg_pos.bed from Ref.fa
+#
+def Buildcglist_dict_Seq(infasta):
+    cglist_dict = defaultdict(list)
+    with pysam.FastxFile(infasta) as fh:
+        for entry in fh:
+            chr_name = entry.name
+            chr_seq = entry.sequence
+            position_list = pattern_search(chr_name, chr_seq, patternstring='CG')
+            # write to file
+            cglist_dict[chr_name] = position_list
+    # Sort values numerically based on div[1]
+    for chromosome in cglist_dict:
+        cglist_dict[chromosome] = sorted(cglist_dict[chromosome], key=lambda x: int(x.split("_")[1]))
+    return cglist_dict
+#
+#
+def pattern_search(chr_name, string, pattern):
+    """
+    > ATTTCTCTCTCGAAAAAAAACGAAAAAAAA
+    > 123456789012345678901234567890
+    > print(pattern_search(a,'CG'))
+    > [11, 21]
+    """
+    position = []
+    str_len = len(string)
+    pat_len = len(pattern)
+    for i in range(0,str_len-pat_len+1):
+        for j in range(0,pat_len):
+            if string[i+j]!=pattern[j]:
+                break
+        else:
+            value = chr_name + "_" + str(i+1)
+            position.append(value)
+    return position
