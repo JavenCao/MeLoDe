@@ -53,7 +53,7 @@ For molecules producing HiFi reads:
                   --datatype HIFI \
                   --inputType aligned \
                   --outprefix Sample_Name.HiFi \
-                  --Ref Ref.fa \
+                  -cg cpg_pos.bed \
                   --outputType MoleculeLevel
 
 For all the molecules by subreads (ClosedZMW and OpenZMW):
@@ -62,7 +62,7 @@ For all the molecules by subreads (ClosedZMW and OpenZMW):
                   --datatype SUBREAD \
                   --inputType aligned \
                   --outprefix Sample_Name \
-                  --Ref Ref.fa \
+                  -cg cpg_pos.bed \
                   --outputType MoleculeLevel
 
 **Step4:** Using molecules with and without HiFi reads for CpG site level DNAm frequency estimation:
