@@ -53,7 +53,7 @@ For molecules producing HiFi reads:
                   --datatype HIFI \
                   --inputType aligned \
                   --outprefix Sample_Name.HiFi \
-                  --cpgbed cpg_motif.pos \
+                  --Ref Ref.fa \
                   --outputType MoleculeLevel
 
 For all the molecules by subreads (ClosedZMW and OpenZMW):
@@ -62,24 +62,14 @@ For all the molecules by subreads (ClosedZMW and OpenZMW):
                   --datatype SUBREAD \
                   --inputType aligned \
                   --outprefix Sample_Name \
-                  --cpgbed cpg_motif.pos \
+                  --Ref Ref.fa \
                   --outputType MoleculeLevel
-
-
-Each line of "cpg_motif.pos" is a CpG motif coordinate (1-based) on the reference genome, such as:
-
-        chr1	10469
-        chr1	10471
-        chr1	10484
-        chr1	10489
-        ...
 
 **Step4:** Using molecules with and without HiFi reads for CpG site level DNAm frequency estimation:
 
         ldlr_site --Hpre Sample_Name.HiFi.SingleMol.pre.txt.gz \
                   --Spre Sample_Name.Subread.SingleMol.pre.txt.gz \
                   --outfile Sample_Name.low_depth.CpG.pre.txt.gz
-
 
 ## Train your own models
 
