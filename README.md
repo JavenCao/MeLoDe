@@ -65,6 +65,14 @@ For all the molecules by subreads (ClosedZMW and OpenZMW):
                   -cg cpg_pos.bed \
                   --outputType MoleculeLevel
 
+Each line of "cpg_motif.pos" is a CpG motif coordinate (1-based) on the reference genome, such as:
+        chr1	10469
+        chr1	10471
+        chr1	10484
+        chr1	10489
+        ...
+,which could be created by:
+        python motif.py --fastafile Ref.fa --pattern 'CG' --outputfile pg_pos.bed
 **Step4:** Using molecules with and without HiFi reads for CpG site level DNAm frequency estimation:
 
         ldlr_site --Hpre Sample_Name.HiFi.SingleMol.pre.txt.gz \
