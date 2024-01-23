@@ -97,7 +97,7 @@ Molecules of HiFi-reads, nonHiFi-ClosedZMW, nonHiFi-OpenZMW will all be used to 
 Users could train their own *ZMWmeth model* and *Joint-CpG model* to determine read-level 5mC status, and estimate site-level 5mC frequency, respectively.
 Actually, not only 5mC modification, but other DNA/RNA modifications fit, as long as the training data can be properly generated
 
-**ZMWmeth model**
+### Train ZMWmeth model
 
 To train *ZMWmeth model*, ground-truth Fully-methylated sample and Fully-unmethylated sample are needed.
 
@@ -174,7 +174,7 @@ Specifically, training data can be pre-selected for customization. Such as:
 * random select 10M reads
 * ... ...
 
-**Joint-CpG model**
+### Train Joint-CpG model
 
 To train *Joint-CpG model*, wild-type samples with ground-truth site-level methylation frequency(such as determined by WGBS) are needed.
 
