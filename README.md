@@ -116,7 +116,14 @@ Aligned Bam and unaligned Bam are both supported, as long as fi/fp/ri/rp(HiFi re
                   --outprefix Sample_Name \
                   --outputType Feature
 
-By running this, a file named "Sample_Name.Kmat.txt.gz" will be generated, which stores HiFi read level features.
+"Sample_Name.Kmat.txt.gz" will be generated, which stores HiFi read level features, columns are as follows:
+
+        1. Sequence contest for top-strand on its template in 3'-5' direction
+        2. IPD features when synthesizing the top-strand
+        3. PW features when synthesizing the top-strand
+        4. Sequence contest for bot-strand on its template in 3'-5' direction
+        5. IPD features when synthesizing the bot-strand
+        6. PW features when synthesizing the bot-strand
 
 (2) From **aligned HiFi reads** with fi/fp/ri/rp tags:
 
@@ -128,7 +135,7 @@ By running this, a file named "Sample_Name.Kmat.txt.gz" will be generated, which
                   --outputType Feature \
                   --cpgbed cpg_motif.pos
 
-By running this, a file named "Sample_Name.Kmat.txt.gz" will be generated, which stores HiFi read level features with respected to each cpg motif on the reference genome.
+"Sample_Name.Kmat.txt.gz" will be generated, which stores HiFi read level features with respected to each cpg motif on the reference genome, header is the same as above.
 
 (3) From **aligned subreads** with ip/pw tags:
 
@@ -140,18 +147,25 @@ By running this, a file named "Sample_Name.Kmat.txt.gz" will be generated, which
                   --outputType Feature \
                   -cg cpg_motif.pos
 
-By running this, a file named "Sample_Name.Kmat.txt.gz" will be generated, which sotre single molecule level features(in the unit of ZMW) with respected to each cpg motif on the reference genome.
+"Sample_Name.Kmat.txt.gz" will be generated, which sotre single molecule level features (in the unit of ZMW) with respected to each cpg motif on the reference genome, columns are as follows:
+
+        1. Sequence contest for forward strand of the Reference.fa in 3'-5' direction
+        2. IPD features when synthesizing the forward-strand
+        3. PW features when synthesizing the forward-strand
+        4. Sequence contest for reverse strand of the Reference.fa in 3'-5' direction
+        5. IPD features when synthesizing the reverse-strand
+        6. PW features when synthesizing the reverse-strand
 
 **- Step2 - model training**
 
 Using feature files above (Fully-methylated sample and Fully-unmethylated sample are both needed), ZMWmeth model can be trained as follows:
 
         python readtrain.py --MethFeature Me.Kmat.txt.gz \
-                        --UnMethFeature UnMe.Kmat.txt.gz \
-                        --OutDir /output/folder/
+                            --UnMethFeature UnMe.Kmat.txt.gz \
+                            --OutDir /output/folder/
 
-Specifically, reads/ZMWs/CpGs used for training can be pre-selected. Such as:
-* use HiFi reads or subreads feature to train
+Specifically, training data can be pre-selected for customization. Such as:
+* use HiFi reads or subreads features alone to train
 * select reads/molecules located at CpG-Island/CpG-desert
 * select CpGs at chromsome 10
 * use 1 or multiple read(s) for each CpG
@@ -162,15 +176,15 @@ Specifically, reads/ZMWs/CpGs used for training can be pre-selected. Such as:
 
 **Joint-CpG model**
 
-To train *Joint-CpG model*, wild-type samples with ground-truth site-level methylation frequency(such as by WGBS data) are needed.
+To train *Joint-CpG model*, wild-type samples with ground-truth site-level methylation frequency(such as determined by WGBS) are needed.
 
-Joint-CpG model can be trained with respected to HiFi reads, combination of HiFi-reads + nonHiFi-subreads, and subreads.
+Joint-CpG model can be trained with respected to HiFi reads, combination of HiFi-reads + nonHiFi-subreads.
 
 **- Step1 - Single-molecule level 5mC identification**
 
 For molecules producing HiFi reads:
 
-        ldlr_read --bamfile Aligned.hifi.bam \
+        ldlr_read --bamfile Wildtype.Aligned.hifi.bam \
                   --datatype HIFI \
                   --inputType aligned \
                   --outprefix Sample_Name.HiFi \
@@ -179,11 +193,9 @@ For molecules producing HiFi reads:
 
 **- Step2 - model training**
 
-python sitetrain.py -hifizmw Sample_Name.HiFi.txt.gz \
-                    -TrueSiteLevel
-
-
-
+python sitetrain.py --hifizmw Sample_Name.HiFi.txt.gz \
+                    --TrueSiteLevel Sample_Name.wgbs.cpg.bed \
+                    --OutDir /output/folder/
 
 ## Full parameter table
 
