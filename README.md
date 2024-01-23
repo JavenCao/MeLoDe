@@ -61,7 +61,7 @@ For all the molecules by subreads (ClosedZMW and OpenZMW):
         ldlr_read --bamfile Aligned.subreads.bam \
                   --datatype SUBREAD \
                   --inputType aligned \
-                  --outprefix Sample_Name \
+                  --outprefix Sample_Name.Subreads \
                   -cg cpg_pos.bed \
                   --outputType MoleculeLevel
 
@@ -141,6 +141,7 @@ Using feature files above (Fully-methylated sample and Fully-unmethylated sample
                         --OutDir /output/folder/
 
 Specifically, reads/ZMWs/CpGs used for training can be pre-selected. Such as:
+* use HiFi reads or subreads feature to train
 * select reads/molecules located at CpG-Island/CpG-desert
 * select CpGs at chromsome 10
 * use 1 or multiple read(s) for each CpG
@@ -149,7 +150,27 @@ Specifically, reads/ZMWs/CpGs used for training can be pre-selected. Such as:
 * random select 10M reads
 * ... ...
 
+**Joint-CpG model**
 
+To train *Joint-CpG model*, wild-type samples with ground-truth site-level methylation frequency(such as by WGBS data) are needed.
+
+Joint-CpG model can be trained with respected to HiFi reads, combination of HiFi-reads + nonHiFi-subreads, and subreads.
+
+**- Step1 - Single-molecule level 5mC identification**
+
+For molecules producing HiFi reads:
+
+        ldlr_read --bamfile Aligned.hifi.bam \
+                  --datatype HIFI \
+                  --inputType aligned \
+                  --outprefix Sample_Name.HiFi \
+                  -cg cpg_pos.bed \
+                  --outputType MoleculeLevel
+
+**- Step2 - model training**
+
+python sitetrain.py -hifizmw Sample_Name.HiFi.txt.gz \
+                    -TrueSiteLevel
 
 
 
