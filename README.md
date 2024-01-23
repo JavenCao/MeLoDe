@@ -14,8 +14,8 @@ From **unaligned HiFi reads**:
                   --outprefix Sample_Name \
                   --outputType ModBam
 
-By running this, "Sample_Name.5mc.mod.unaligned.bam" will be generated in which the MM/ML tag is created, tagging the positions and 5mC probabilities of CpGs on reads.
-Adding "--KeepKinetics keep" will keep the fi/fp/ri/rp tags, otherwise removed
+"Sample_Name.5mc.mod.unaligned.bam" will be generated, in which the MM/ML tag is created, tagging the positions and 5mC probabilities of CpGs on reads.
+Adding "--KeepKinetics keep" will keep the fi/fp/ri/rp tags, otherwise removed.
 
 Next, align the 5mC tagged ModBam to the reference genome using pbmm2:
 
@@ -34,6 +34,10 @@ Decode the mod.bam with MM/ML tag into read level prediction:
 Output file of "HiFi.Site.5mC.fre" reports DNA 5mC frequency on CpG site.
 
 ## Workflow of LDLR-Meth in the low depth design
+
+LDLR-Meth is tailored for low depth sequencing design, which is a commonly used experimental strategy in population-scale study.
+
+Taking PacBio platform as an example, below is the workflow to get 5mC prediction from low depth sequencing with subreads data.
 
 **Step1:** Synthesis HiFi reads from subreads:
 
@@ -56,6 +60,8 @@ For molecules producing HiFi reads:
                   -cg cpg_pos.bed \
                   --outputType MoleculeLevel
 
+"Sample_Name.HiFi.SingleMol.pre.txt.gz" will be generated for each HiFi read.
+
 For all the molecules by subreads (ClosedZMW and OpenZMW):
 
         ldlr_read --bamfile Aligned.subreads.bam \
@@ -65,6 +71,8 @@ For all the molecules by subreads (ClosedZMW and OpenZMW):
                   -cg cpg_pos.bed \
                   --outputType MoleculeLevel
 
+"Sample_Name.Subread.SingleMol.pre.txt.gz" will be generated for all the template molecules, including those with HiFi reads.
+
 Each line of "cpg_motif.pos" is a CpG motif coordinate (1-based) on the reference genome, such as:
 
         chr1	10469
@@ -72,15 +80,17 @@ Each line of "cpg_motif.pos" is a CpG motif coordinate (1-based) on the referenc
         chr1	10484
         chr1	10489
         ...
-, which could be created by:
+, which could be created by (only once):
 
-        ldlr_motif --fastafile Ref.fa --pattern 'CG' --outputfile pg_pos.bed
+        ldlr_motif --fastafile Ref.fa --pattern 'CG' --outputfile cpg_pos.bed
 
-**Step4:** Using molecules with and without HiFi reads for CpG site level DNAm frequency estimation:
+**Step4:** Jointly use molecules with and without HiFi reads for CpG site level DNAm frequency estimation:
 
         ldlr_site --Hpre Sample_Name.HiFi.SingleMol.pre.txt.gz \
                   --Spre Sample_Name.Subread.SingleMol.pre.txt.gz \
                   --outfile Sample_Name.low_depth.CpG.pre.txt.gz
+
+Molecules of HiFi-reads, nonHiFi-ClosedZMW, nonHiFi-OpenZMW will all be used to give the final prediction on CpG site level.
 
 ## Train your own models
 
