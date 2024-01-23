@@ -764,6 +764,7 @@ def Aligned_subreadsBam_Feature(bamf, cglist, outputp, outputType, mappingQ, R, 
         OUTPUT: outputType == "Feature": Single molecule level prediction
     """
     samfile = pysam.AlignmentFile(bamf, "rb")
+    chromosome_order_list = list(samfile.references)
     Feature_dict = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(list))))
     if outputType == "Feature":
         outfile = outputp + ".SingleMol.KFeature.txt.gz"
@@ -812,7 +813,13 @@ def Aligned_subreadsBam_Feature(bamf, cglist, outputp, outputType, mappingQ, R, 
                         processed_read_count = processed_read_count + 1
                         # ---
                         if processed_read_count % 2000 == 0:
-                            sorted_processed_cpgs = sorted(list(Feature_dict), key=lambda x: int(x.split("_")[1]))
+                            # 2024-01-23
+                            # > a = ['chr1_40', 'chr1_30', 'chr1_80', 'chr2_10', 'chr1_33', 'chr2_100']
+                            # > b = ['chr1', 'chr2', 'chr3']
+                            # > sorted_a = sorted(a, key=lambda x: (b.index(x.split('_')[0]), int(x.split('_')[1])))
+                            # > sorted_a
+                            # > ['chr1_30', 'chr1_33', 'chr1_40', 'chr1_80', 'chr2_10', 'chr2_100']
+                            sorted_processed_cpgs = sorted(chromosome_order_list, key=lambda x: (x.split('_')[0], int(x.split('_')[1])))                            
                             first_C_chr, first_C_pos = sorted_processed_cpgs[0].split("_")
                             last_C_chr, last_C_pos = sorted_processed_cpgs[-1].split("_")
                             if first_C_chr == last_C_chr:
@@ -860,6 +867,7 @@ def Aligned_subreadsBam_Meth(bamf, cglist, outputp, outputType, mappingQ, R, sca
         OUTPUT: outputType == "MoleculeLevel": Single molecule level prediction
     """
     samfile = pysam.AlignmentFile(bamf, "rb")
+    chromosome_order_list = list(samfile.references)
     Feature_dict = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(list))))
     if outputType == "MoleculeLevel":
         outfile = outputp + ".SingleMol.pre.txt.gz"
@@ -908,7 +916,7 @@ def Aligned_subreadsBam_Meth(bamf, cglist, outputp, outputType, mappingQ, R, sca
                         processed_read_count = processed_read_count + 1
                         # ---
                         if processed_read_count % 2000 == 0:
-                            sorted_processed_cpgs = sorted(list(Feature_dict), key=lambda x: int(x.split("_")[1]))
+                            sorted_processed_cpgs = sorted(chromosome_order_list, key=lambda x: (x.split('_')[0], int(x.split('_')[1])))
                             first_C_chr, first_C_pos = sorted_processed_cpgs[0].split("_")
                             last_C_chr, last_C_pos = sorted_processed_cpgs[-1].split("_")
                             if first_C_chr == last_C_chr:# same chromosome
