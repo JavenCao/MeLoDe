@@ -193,9 +193,9 @@ For molecules producing HiFi reads:
 
 **- Step2 - model training**
 
-python sitetrain.py --hifizmw Sample_Name.HiFi.txt.gz \
-                    --TrueSiteLevel Sample_Name.wgbs.cpg.bed \
-                    --OutDir /output/folder/
+        python sitetrain.py --hifizmw Sample_Name.HiFi.txt.gz \
+                            --TrueSiteLevel Sample_Name.wgbs.cpg.bed \
+                            --OutDir /output/folder/
 
 ## Full parameter table
 
