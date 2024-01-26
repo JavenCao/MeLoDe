@@ -104,7 +104,7 @@ Molecules of HiFi-reads, nonHiFi-ClosedZMW, nonHiFi-OpenZMW will all be used to 
 
 ## Train your own models
 
-By default, LDLR-Meth uses the well-trained models, which is released together with the software as follows.
+By default, LDLR-Meth uses the well-trained models, which are released together with the software.
 
         ├── LDLR-Meth
         │   └── models
