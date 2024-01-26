@@ -33,6 +33,16 @@ Decode the mod.bam with MM/ML tag into read level prediction:
 
 Output file of "HiFi.Site.5mC.fre" reports DNA 5mC frequency on CpG site.
 
+
+
+
+
+
+
+
+
+
+
 ## Workflow of LDLR-Meth in the low depth design
 
 LDLR-Meth is tailored for low depth sequencing design, which is a commonly used experimental strategy in population-scale study.
@@ -93,6 +103,25 @@ Each line of "cpg_motif.pos" is a CpG motif coordinate (1-based) on the referenc
 Molecules of HiFi-reads, nonHiFi-ClosedZMW, nonHiFi-OpenZMW will all be used to give the final prediction on CpG site level.
 
 ## Train your own models
+
+By default, LDLR-Meth uses the well-trained models, which is released together with the software as follows.
+
+        ├── LDLR-Meth
+        │   └── models
+        │       ├── 1_ZMWmeth_model
+        │       │   ├── double_strand
+        │       │   │   ├── ds.HiFi.zmwmeth.model
+        │       │   │   ├── small.ds.HiFi.zmwmeth.model
+        │       │   │   └── Subreads.ClosedZMW.zmwmeth.model
+        │       │   └── single_strand
+        │       │       ├── ss.HiFi.zmwmeth.model
+        │       │       └── Subreads.OpenZMW.zmwmeth.model
+        │       └── 2_JointCpG_model
+        │           ├── ONT
+        │           │   └── ONT.jointcpg.model
+        │           └── PB
+        │               ├── HCO.low_depth.jointcpg.model
+        │               └── hifi.jointcpg.model
 
 Users could train their own *ZMWmeth model* and *Joint-CpG model* to determine read-level 5mC status, and estimate site-level 5mC frequency, respectively.
 Actually, not only 5mC modification, but other DNA/RNA modifications fit, as long as the training data can be properly generated
@@ -196,6 +225,16 @@ For molecules producing HiFi reads:
         python sitetrain.py --hifizmw Sample_Name.HiFi.txt.gz \
                             --TrueSiteLevel Sample_Name.wgbs.cpg.bed \
                             --OutDir /output/folder/
+
+
+
+
+
+## Well trained models
+
+
+
+
 
 ## Full parameter table
 
