@@ -14,8 +14,8 @@ From **unaligned HiFi reads**:
                   --outprefix Sample_Name \
                   --outputType ModBam
 
-By running this, "Sample_Name.5mc.mod.unaligned.bam" will be generated in which the MM/ML tag is created, tagging the positions and 5mC probabilities of CpGs on reads.
-Adding "--KeepKinetics keep" will keep the fi/fp/ri/rp tags, otherwise removed
+"Sample_Name.5mc.mod.unaligned.bam" will be generated, in which the MM/ML tag is created, tagging the positions and 5mC probabilities of CpGs on reads.
+Adding "--KeepKinetics keep" will keep the fi/fp/ri/rp tags, otherwise removed.
 
 Next, align the 5mC tagged ModBam to the reference genome using pbmm2:
 
@@ -33,7 +33,21 @@ Decode the mod.bam with MM/ML tag into read level prediction:
 
 Output file of "HiFi.Site.5mC.fre" reports DNA 5mC frequency on CpG site.
 
+
+
+
+
+
+
+
+
+
+
 ## Workflow of LDLR-Meth in the low depth design
+
+LDLR-Meth is tailored for low depth sequencing design, which is a commonly used experimental strategy in population-scale study.
+
+Taking PacBio platform as an example, below is the workflow to get 5mC prediction from low depth sequencing with subreads data.
 
 **Step1:** Synthesis HiFi reads from subreads:
 
@@ -53,30 +67,66 @@ For molecules producing HiFi reads:
                   --datatype HIFI \
                   --inputType aligned \
                   --outprefix Sample_Name.HiFi \
-                  --Ref Ref.fa \
+                  -cg cpg_pos.bed \
                   --outputType MoleculeLevel
+
+"Sample_Name.HiFi.SingleMol.pre.txt.gz" will be generated for each HiFi read.
 
 For all the molecules by subreads (ClosedZMW and OpenZMW):
 
         ldlr_read --bamfile Aligned.subreads.bam \
                   --datatype SUBREAD \
                   --inputType aligned \
-                  --outprefix Sample_Name \
-                  --Ref Ref.fa \
+                  --outprefix Sample_Name.Subreads \
+                  -cg cpg_pos.bed \
                   --outputType MoleculeLevel
 
-**Step4:** Using molecules with and without HiFi reads for CpG site level DNAm frequency estimation:
+"Sample_Name.Subread.SingleMol.pre.txt.gz" will be generated for all the template molecules, including those with HiFi reads.
+
+Each line of "cpg_motif.pos" is a CpG motif coordinate (1-based) on the reference genome, such as:
+
+        chr1	10469
+        chr1	10471
+        chr1	10484
+        chr1	10489
+        ...
+, which could be created by (only once):
+
+        ldlr_motif --fastafile Ref.fa --pattern 'CG' --outputfile cpg_pos.bed
+
+**Step4:** Jointly use molecules with and without HiFi reads for CpG site level DNAm frequency estimation:
 
         ldlr_site --Hpre Sample_Name.HiFi.SingleMol.pre.txt.gz \
                   --Spre Sample_Name.Subread.SingleMol.pre.txt.gz \
                   --outfile Sample_Name.low_depth.CpG.pre.txt.gz
 
+Molecules of HiFi-reads, nonHiFi-ClosedZMW, nonHiFi-OpenZMW will all be used to give the final prediction on CpG site level.
+
 ## Train your own models
+
+By default, LDLR-Meth uses the well-trained models, which are released together with the software.
+
+        ├── LDLR-Meth
+        │   └── models
+        │       ├── 1_ZMWmeth_model
+        │       │   ├── double_strand
+        │       │   │   ├── ds.HiFi.zmwmeth.model
+        │       │   │   ├── small.ds.HiFi.zmwmeth.model
+        │       │   │   └── Subreads.ClosedZMW.zmwmeth.model
+        │       │   └── single_strand
+        │       │       ├── ss.HiFi.zmwmeth.model
+        │       │       └── Subreads.OpenZMW.zmwmeth.model
+        │       └── 2_JointCpG_model
+        │           ├── ONT
+        │           │   └── ONT.jointcpg.model
+        │           └── PB
+        │               ├── HCO.low_depth.jointcpg.model
+        │               └── hifi.jointcpg.model
 
 Users could train their own *ZMWmeth model* and *Joint-CpG model* to determine read-level 5mC status, and estimate site-level 5mC frequency, respectively.
 Actually, not only 5mC modification, but other DNA/RNA modifications fit, as long as the training data can be properly generated
 
-**ZMWmeth model**
+### Train ZMWmeth model
 
 To train *ZMWmeth model*, ground-truth Fully-methylated sample and Fully-unmethylated sample are needed.
 
@@ -95,7 +145,14 @@ Aligned Bam and unaligned Bam are both supported, as long as fi/fp/ri/rp(HiFi re
                   --outprefix Sample_Name \
                   --outputType Feature
 
-By running this, a file named "Sample_Name.Kmat.txt.gz" will be generated, which stores HiFi read level features.
+"Sample_Name.Kmat.txt.gz" will be generated, which stores HiFi read level features, columns are as follows:
+
+        1. Sequence contest for top-strand on its template in 3'-5' direction
+        2. IPD features when synthesizing the top-strand
+        3. PW features when synthesizing the top-strand
+        4. Sequence contest for bot-strand on its template in 3'-5' direction
+        5. IPD features when synthesizing the bot-strand
+        6. PW features when synthesizing the bot-strand
 
 (2) From **aligned HiFi reads** with fi/fp/ri/rp tags:
 
@@ -107,7 +164,7 @@ By running this, a file named "Sample_Name.Kmat.txt.gz" will be generated, which
                   --outputType Feature \
                   --cpgbed cpg_motif.pos
 
-By running this, a file named "Sample_Name.Kmat.txt.gz" will be generated, which stores HiFi read level features with respected to each cpg motif on the reference genome.
+"Sample_Name.Kmat.txt.gz" will be generated, which stores HiFi read level features with respected to each cpg motif on the reference genome, header is the same as above.
 
 (3) From **aligned subreads** with ip/pw tags:
 
@@ -119,17 +176,25 @@ By running this, a file named "Sample_Name.Kmat.txt.gz" will be generated, which
                   --outputType Feature \
                   -cg cpg_motif.pos
 
-By running this, a file named "Sample_Name.Kmat.txt.gz" will be generated, which sotre single molecule level features(in the unit of ZMW) with respected to each cpg motif on the reference genome.
+"Sample_Name.Kmat.txt.gz" will be generated, which sotre single molecule level features (in the unit of ZMW) with respected to each cpg motif on the reference genome, columns are as follows:
+
+        1. Sequence contest for forward strand of the Reference.fa in 3'-5' direction
+        2. IPD features when synthesizing the forward-strand
+        3. PW features when synthesizing the forward-strand
+        4. Sequence contest for reverse strand of the Reference.fa in 3'-5' direction
+        5. IPD features when synthesizing the reverse-strand
+        6. PW features when synthesizing the reverse-strand
 
 **- Step2 - model training**
 
 Using feature files above (Fully-methylated sample and Fully-unmethylated sample are both needed), ZMWmeth model can be trained as follows:
 
         python readtrain.py --MethFeature Me.Kmat.txt.gz \
-                        --UnMethFeature UnMe.Kmat.txt.gz \
-                        --OutDir /output/folder/
+                            --UnMethFeature UnMe.Kmat.txt.gz \
+                            --OutDir /output/folder/
 
-Specifically, reads/ZMWs/CpGs used for training can be pre-selected. Such as:
+Specifically, training data can be pre-selected for customization. Such as:
+* use HiFi reads or subreads features alone to train
 * select reads/molecules located at CpG-Island/CpG-desert
 * select CpGs at chromsome 10
 * use 1 or multiple read(s) for each CpG
@@ -138,6 +203,34 @@ Specifically, reads/ZMWs/CpGs used for training can be pre-selected. Such as:
 * random select 10M reads
 * ... ...
 
+### Train Joint-CpG model
+
+To train *Joint-CpG model*, wild-type samples with ground-truth site-level methylation frequency(such as determined by WGBS) are needed.
+
+Joint-CpG model can be trained with respected to HiFi reads, combination of HiFi-reads + nonHiFi-subreads.
+
+**- Step1 - Single-molecule level 5mC identification**
+
+For molecules producing HiFi reads:
+
+        ldlr_read --bamfile Wildtype.Aligned.hifi.bam \
+                  --datatype HIFI \
+                  --inputType aligned \
+                  --outprefix Sample_Name.HiFi \
+                  -cg cpg_pos.bed \
+                  --outputType MoleculeLevel
+
+**- Step2 - model training**
+
+        python sitetrain.py --hifizmw Sample_Name.HiFi.txt.gz \
+                            --TrueSiteLevel Sample_Name.wgbs.cpg.bed \
+                            --OutDir /output/folder/
+
+
+
+
+
+## Well trained models
 
 
 
