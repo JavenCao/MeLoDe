@@ -21,9 +21,6 @@ if __name__ == "__main__":
                         --UnMethFeature UnMe.Kmat.txt.gz \
                         --OutDir /output/folder/
     """
-    # mfile="/storage/yangjianLab/caoyujie/project/meth/6_Freeze/1_Single_molecule_level/1_K_Feature/meHG01109_hifi/test.meHG01109_hifi.Kmat.txt.gz"
-    # umfile="/storage/yangjianLab/caoyujie/project/meth/6_Freeze/1_Single_molecule_level/1_K_Feature/wgaHG01109_hifi/test.wgaHG01109_hifi.Kmat.txt.gz"
-    # outdir="/storage/yangjianLab/caoyujie/project/meth/6_Freeze/1_Single_molecule_level/1_K_Feature/test"
     args = get_args()
     mfile = args.MethFeature
     umfile = args.UnMethFeature
@@ -58,8 +55,8 @@ if __name__ == "__main__":
     # step5: remove outdir_tmp and train_npz_file
     if os.path.exists(outdir_tmp):
         shutil.rmtree(outdir_tmp)
-    if os.path.exists(train_npz_file):
-        os.remove(train_npz_file)
+    if os.path.exists(Train_npz_file):
+        os.remove(Train_npz_file)
 else:
     pass
 #
