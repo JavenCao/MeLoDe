@@ -156,7 +156,7 @@ def ZMWmeth_model_training(Train_npz_file, winsize, FileBatch_Size, strand_flag,
             epochs=70,
             validation_data=test_dataset,
             validation_steps=len(validation_file_list)//FileBatch_Size,
-            verbose=1,
+            verbose=2,
             callbacks=[early_stopping, CheckNanCallback(train_dataset)],
             use_multiprocessing=True, workers=cpus,
             max_queue_size=10000)
