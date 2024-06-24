@@ -70,6 +70,7 @@ From HiFi reads data:
                        --inputType aligned \
                        --outprefix SampleID.HiFi \
                        --ref Ref.fa \
+                       --motif "CG" \
                        --outputType MoleculeLevel
 
 "SampleID.HiFi.SingleMol.pre.txt.gz" will be generated for CpG sites captured by each HiFi read.
@@ -81,11 +82,12 @@ From subreads data:
                        --inputType aligned \
                        --outprefix SampleID.Subreads \
                        --ref Ref.fa \
+                       --motif "CG" \          
                        --outputType MoleculeLevel
 
 Using subreads data as above, "SampleID.Subread.SingleMol.pre.txt.gz" will be generated for CpG sites captured by each single molecule.
 
-**Step4:** Usages of HiFi reads and non-HiFi subreads to estimate CpG site-level DNAm frequency:
+**Step4:** Usage of HiFi reads and non-HiFi subreads to estimate CpG site-level DNAm frequency:
 
         MeLoDe SitePre --Hpre SampleID.HiFi.SingleMol.pre.txt.gz \
                        --Spre SampleID.Subread.SingleMol.pre.txt.gz \
@@ -95,7 +97,7 @@ This step comprehensively uses molecules of HiFi-reads, nonHiFi-ClosedZMW, nonHi
 
 ## (Advanced) Train your own models
 
-By default, MeLoDe uses our pre-trained models, which are released together with the software.
+By default, MeLoDe uses the pre-trained models, which are released together with the software.
 
         MeLoDe
         └── models
@@ -126,18 +128,18 @@ And, ZMWmeth model can be trained using HiFi reads and subreads in double-strand
 
 **- Step1 - feature extration**
 
-Aligned Bam and unaligned Bam are both supported, as long as fi/fp/ri/rp(HiFi reads), ip/pw(Subreads) tags are present. Please find the commands accordingly. - (1)(2)(3)
+Both aligned Bam and unaligned Bam are supported, as long as fi/fp/ri/rp(HiFi reads), ip/pw(Subreads) tags are present. Please find the commands accordingly. - (1)(2)(3)
 
 (1) From **unaligned HiFi reads**, such as m64284e_230525_074225_hifi.bam you get from the sequencing machine with fi/fp/ri/rp tags:
 
-        ldlr_read --bamfile m64284e_230525_074225_hifi.bam \
-                  --datatype HIFI \
-                  --inputType unaligned \
-                  --radius 10 \
-                  --outprefix Sample_Name \
-                  --outputType Feature
+        MeLoDe ReadExtract --bamfile Aligned.hifi.bam \
+                           --datatype HIFI \
+                           --inputType unaligned \
+                           --radius 10 \
+                           --outprefix Sample_ID \
+                           --outputType Feature
 
-"Sample_Name.Kmat.txt.gz" will be generated, which stores HiFi read level features, columns are as follows:
+"Sample_ID.Kmat.txt.gz" will be generated, which stores HiFi read level features, columns are as follows:
 
         1. Sequence contest for top-strand on its template in 3'-5' direction
         2. IPD features when synthesizing the top-strand
@@ -148,27 +150,29 @@ Aligned Bam and unaligned Bam are both supported, as long as fi/fp/ri/rp(HiFi re
 
 (2) From **aligned HiFi reads** with fi/fp/ri/rp tags:
 
-        ldlr_read --bamfile aligned.m64284e_230525_074225_hifi.bam \
-                  --datatype HIFI \
-                  --inputType aligned \
-                  --radius 10 \
-                  --outprefix Sample_Name \
-                  --outputType Feature \
-                  --cpgbed cpg_motif.pos
+        MeLoDe ReadExtract --bamfile Aligned.hifi.bam \
+                           --datatype HIFI \
+                           --inputType aligned \
+                           --radius 10 \
+                           --outprefix Sample_ID \
+                           --outputType Feature \
+                           --ref Ref.fa \
+                           --motif "CG"
 
-"Sample_Name.Kmat.txt.gz" will be generated, which stores HiFi read level features with respected to each cpg motif on the reference genome, header is the same as above.
+"Sample_ID.Kmat.txt.gz" will be generated, which stores HiFi read level features with respected to each cpg motif on the reference genome, header is the same as above.
 
 (3) From **aligned subreads** with ip/pw tags:
 
-        ldlr_read --bamfile aligned.m64284e_230525_074225_subreads.bam \
-                  --datatype SUBREAD \
-                  --inputType aligned \
-                  --radius 10 \
-                  --outprefix Sample_Name \
-                  --outputType Feature \
-                  -cg cpg_motif.pos
+        MeLoDe ReadExtract --bamfile aligned.Subreads.bam \
+                           --datatype SUBREAD \
+                           --inputType aligned \
+                           --radius 10 \
+                           --outprefix Sample_ID \
+                           --outputType Feature \
+                           --ref Ref.fa \
+                           --motif "CG"
 
-"Sample_Name.Kmat.txt.gz" will be generated, which sotre single molecule level features (in the unit of ZMW) with respected to each cpg motif on the reference genome, columns are as follows:
+"Sample_ID.Kmat.txt.gz" will be generated, which sotre single molecule level features (in the unit of ZMW) with respected to each cpg motif on the reference genome, columns are as follows:
 
         1. Sequence contest for forward strand of the Reference.fa in 3'-5' direction
         2. IPD features when synthesizing the forward-strand
