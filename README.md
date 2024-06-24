@@ -1,23 +1,23 @@
-# LDLR-Meth
-Low depth long reads methylation caller
+# MeLoDe
+DNA methylation detection from low-depth long-read sequencing
 
 ## Quick start:
 If you only have HiFi reads(>5x), feel free to use, go ahead!
 
-**Step1: single-molecule 5mC identification**
+**Step1: single-molecule level 5mC identification**
 
 From **unaligned HiFi reads**:
 
-        ldlr_read --bamfile m64284e_230525_074225_hifi.bam \
-                  --datatype HIFI \
-                  --inputType unaligned \
-                  --outprefix Sample_Name \
-                  --outputType ModBam
+        melode ReadPre --bamfile m64284e_230525_074225_hifi.bam \
+                       --datatype HIFI \
+                       --inputType unaligned \
+                       --outprefix Sample_Name \
+                       --outputType ModBam
 
 "Sample_Name.5mc.mod.unaligned.bam" will be generated, in which the MM/ML tag is created, tagging the positions and 5mC probabilities of CpGs on reads.
 Adding "--KeepKinetics keep" will keep the fi/fp/ri/rp tags, otherwise removed.
 
-Next, align the 5mC tagged ModBam to the reference genome using pbmm2:
+Next, align the 5mC tagged ModBam above to the reference genome using pbmm2:
 
         pbmm2 align --preset HiFi Ref.fa Sample_Name.5mc.mod.unaligned.bam Aligned_Sample_Name.5mc.mod.unaligned.bam
 
@@ -25,11 +25,11 @@ Next, align the 5mC tagged ModBam to the reference genome using pbmm2:
 
 Decode the mod.bam with MM/ML tag into read level prediction:
 
-        ldlr_extract --modbam Aligned_Sample_Name.5mc.mod.unaligned.bam \
-                     --outfile Hpre.Read.level.meth.prob.txt.gz
+        melode TagExtract --modbam Aligned_Sample_Name.5mc.mod.unaligned.bam \
+                          --outfile Hpre.Read.level.meth.prob.txt.gz
         
-        ldlr_site --Hpre Hpre.Read.level.meth.prob.txt.gz \
-                  --outfile HiFi.Site.5mC.fre
+        melode SitePre --Hpre Hpre.Read.level.meth.prob.txt.gz \
+                       --outfile HiFi.Site.5mC.fre
 
 Output file of "HiFi.Site.5mC.fre" reports DNA 5mC frequency on CpG site.
 
