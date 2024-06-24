@@ -8,7 +8,7 @@ If you only have HiFi reads(>5x), feel free to use, go ahead!
 
 From **unaligned HiFi reads**:
 
-        melode ReadPre --bamfile m64284e_230525_074225_hifi.bam \
+        MeLoDe ReadPre --bamfile m64284e_230525_074225_hifi.bam \
                        --datatype HIFI \
                        --inputType unaligned \
                        --outprefix Sample_Name \
@@ -25,10 +25,10 @@ Next, align the 5mC tagged ModBam above to the reference genome using pbmm2:
 
 Decode the mod.bam with MM/ML tag into read level prediction:
 
-        melode TagExtract --modbam Aligned_Sample_Name.5mc.mod.unaligned.bam \
+        MeLoDe TagExtract --modbam Aligned_Sample_Name.5mc.mod.unaligned.bam \
                           --outfile Hpre.Read.level.meth.prob.txt.gz
         
-        melode SitePre --Hpre Hpre.Read.level.meth.prob.txt.gz \
+        MeLoDe SitePre --Hpre Hpre.Read.level.meth.prob.txt.gz \
                        --outfile HiFi.Site.5mC.fre
 
 Output file of "HiFi.Site.5mC.fre" reports DNA 5mC frequency on CpG site.
@@ -43,85 +43,75 @@ Output file of "HiFi.Site.5mC.fre" reports DNA 5mC frequency on CpG site.
 
 
 
-## Workflow of LDLR-Meth in the low depth design
+## Workflow of MeLoDe in the low depth long reads sequencing design
 
-LDLR-Meth is tailored for low depth sequencing design, which is a commonly used experimental strategy in population-scale study.
+MeLoDe is developped to detect DNAm for low depth long reads sequencing data, which is a commonly used experimental strategy in population-scale study.
 
-Taking PacBio platform as an example, below is the workflow to get 5mC prediction from low depth sequencing with subreads data.
+Taking PacBio platform as an example, below is the workflow to get 5mCpG prediction from such data.
 
-**Step1:** Synthesis HiFi reads from subreads:
+Data required: long reads sequencing data with subreads and kinitic signals avaliable
 
-        ccs --hifi-kinetics m64284e_230525_074225.subreads.bam m64284e_230525_074225_hifi.bam
+**Step1:** Synthesis HiFi reads from subreads: (Third-party software)
 
-**Step2:** Align HiFi reads and subreads to the reference genome, keeping fi/fp/ri/rp(HiFi reads) and ip/pw(Subreads) tags:
+        ccs --hifi-kinetics subreads.bam hifi.bam
 
-        pbmm2 align --preset HiFi Ref.fa m64284e_230525_074225_hifi.bam Aligned.hifi.bam
+**Step2:** Align HiFi reads and subreads to the reference genome, keeping fi/fp/ri/rp(HiFi reads) and ip/pw(Subreads) tags: (Third-party software)
+
+        pbmm2 align --preset HiFi Ref.fa hifi.bam Aligned.hifi.bam
        
-        pbmm2 align --preset SUBREAD Ref.fa m64284e_230525_074225.subreads.bam Aligned.subreads.bam
+        pbmm2 align --preset SUBREAD Ref.fa subreads.bam Aligned.subreads.bam
 
-**Step3:** Single-molecule level 5mC identification:
+**Step3:** Single-molecule level 5mCpG identification:
 
-For molecules producing HiFi reads:
+From HiFi reads data:
 
-        ldlr_read --bamfile Aligned.hifi.bam \
-                  --datatype HIFI \
-                  --inputType aligned \
-                  --outprefix Sample_Name.HiFi \
-                  -cg cpg_pos.bed \
-                  --outputType MoleculeLevel
+        MeLoDe ReadPre --bamfile Aligned.hifi.bam \
+                       --datatype HIFI \
+                       --inputType aligned \
+                       --outprefix SampleID.HiFi \
+                       --ref Ref.fa \
+                       --outputType MoleculeLevel
 
-"Sample_Name.HiFi.SingleMol.pre.txt.gz" will be generated for each HiFi read.
+"SampleID.HiFi.SingleMol.pre.txt.gz" will be generated for CpG sites captured by each HiFi read.
 
-For all the molecules by subreads (ClosedZMW and OpenZMW):
+From subreads data:
 
-        ldlr_read --bamfile Aligned.subreads.bam \
-                  --datatype SUBREAD \
-                  --inputType aligned \
-                  --outprefix Sample_Name.Subreads \
-                  -cg cpg_pos.bed \
-                  --outputType MoleculeLevel
+        MeLoDe ReadPre --bamfile Aligned.subreads.bam \
+                       --datatype SUBREAD \
+                       --inputType aligned \
+                       --outprefix SampleID.Subreads \
+                       --ref Ref.fa \
+                       --outputType MoleculeLevel
 
-"Sample_Name.Subread.SingleMol.pre.txt.gz" will be generated for all the template molecules, including those with HiFi reads.
+Using subreads data as above, "SampleID.Subread.SingleMol.pre.txt.gz" will be generated for CpG sites captured by each single molecule.
 
-Each line of "cpg_motif.pos" is a CpG motif coordinate (1-based) on the reference genome, such as:
+**Step4:** Usages of HiFi reads and non-HiFi subreads to estimate CpG site-level DNAm frequency:
 
-        chr1	10469
-        chr1	10471
-        chr1	10484
-        chr1	10489
-        ...
-, which could be created by (only once):
+        MeLoDe SitePre --Hpre SampleID.HiFi.SingleMol.pre.txt.gz \
+                       --Spre SampleID.Subread.SingleMol.pre.txt.gz \
+                       --outfile SampleID.low_depth.CpG.pre.txt.gz
 
-        ldlr_motif --fastafile Ref.fa --pattern 'CG' --outputfile cpg_pos.bed
+This step comprehensively uses molecules of HiFi-reads, nonHiFi-ClosedZMW, nonHiFi-OpenZMW to give the final prediction on CpG site level.
 
-**Step4:** Jointly use molecules with and without HiFi reads for CpG site level DNAm frequency estimation:
+## (Advanced) Train your own models
 
-        ldlr_site --Hpre Sample_Name.HiFi.SingleMol.pre.txt.gz \
-                  --Spre Sample_Name.Subread.SingleMol.pre.txt.gz \
-                  --outfile Sample_Name.low_depth.CpG.pre.txt.gz
+By default, MeLoDe uses our pre-trained models, which are released together with the software.
 
-Molecules of HiFi-reads, nonHiFi-ClosedZMW, nonHiFi-OpenZMW will all be used to give the final prediction on CpG site level.
-
-## Train your own models
-
-By default, LDLR-Meth uses the well-trained models, which are released together with the software.
-
-        ├── LDLR-Meth
-        │   └── models
-        │       ├── 1_ZMWmeth_model
-        │       │   ├── double_strand
-        │       │   │   ├── ds.HiFi.zmwmeth.model
-        │       │   │   ├── small.ds.HiFi.zmwmeth.model
-        │       │   │   └── Subreads.ClosedZMW.zmwmeth.model
-        │       │   └── single_strand
-        │       │       ├── ss.HiFi.zmwmeth.model
-        │       │       └── Subreads.OpenZMW.zmwmeth.model
-        │       └── 2_JointCpG_model
-        │           ├── ONT
-        │           │   └── ONT.jointcpg.model
-        │           └── PB
-        │               ├── HCO.low_depth.jointcpg.model
-        │               └── hifi.jointcpg.model
+        MeLoDe
+        └── models
+            ├── 1_ZMWmeth_model
+            │   ├── double_strand
+            │   │   ├── ds.HiFi
+            │   │   └── ds.Subreads
+            │   └── single_strand
+            │       ├── ss.HiFi
+            │       └── ss.Subreads
+            └── 2_JointCpG_model
+                ├── ONT
+                │   └── ONT.jointcpg
+                └── PB
+                    ├── HCO.jointcpg
+                    └── H.jointcpg
 
 Users could train their own *ZMWmeth model* and *Joint-CpG model* to determine read-level 5mC status, and estimate site-level 5mC frequency, respectively.
 Actually, not only 5mC modification, but other DNA/RNA modifications fit, as long as the training data can be properly generated
@@ -130,7 +120,9 @@ Actually, not only 5mC modification, but other DNA/RNA modifications fit, as lon
 
 To train *ZMWmeth model*, ground-truth Fully-methylated sample and Fully-unmethylated sample are needed.
 
-ZMWmeth model can be trained with respected to HiFi reads, ZMW with subreads, double-strand resolution and single-strand resolution.
+Say, for 5mC, the training datasets included fully-methylated DNA samples created through treatment with CpG Methyltransferase M.SssI, while fully-unmethylated DNA samples were generated via whole genome amplification.
+
+And, ZMWmeth model can be trained using HiFi reads and subreads in double-strand and single-strand resolution.
 
 **- Step1 - feature extration**
 
