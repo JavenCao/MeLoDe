@@ -1,3 +1,4 @@
+（5）Subreads feature extraction: log output is too much
 (4) w.r.t (1), the speed is slow if output is: ".Kmat.txt.gz", compressed txt.
 can be speeded up? or go back to uncompressed ".Kmat.txt"
 
