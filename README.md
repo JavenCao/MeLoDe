@@ -36,12 +36,12 @@ Output file of "HiFi.Site.5mC.fre" reports DNA 5mC frequency on CpG site.
 
 The tab-delimited file of "HiFi.Site.5mC.fre" is in the following format:
 
-chrom: chromosome
-pos: 1-based coordinate of the CpG on the reference genome
-strand: +/-, the aligned strand of the read to the reference
-depth: total read depths
-count_based: count-based prediction
-model_based: model-based prediction
+1. chrom: chromosome
+2. pos: 1-based coordinate of the CpG on the reference genome
+3. strand: +/-, the aligned strand of the read to the reference
+4. depth: total read depths
+5. count_based: count-based prediction
+6. model_based: model-based prediction
 
 
 
