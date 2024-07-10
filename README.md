@@ -2,9 +2,10 @@
 DNA methylation detection from low-depth long-read sequencing
 
 ## Quick start:
-If you only have HiFi reads(>5x), feel free to use, go ahead!
+Using HiFi reads, we demonstrate how to use MeLoDe.
+But be in mind that MeLoDe can be run on subreads as well.
 
-**Step1: single-molecule level 5mC identification**
+**Step1: read-level 5mC identification**
 
 From **unaligned HiFi reads**:
 
@@ -32,6 +33,15 @@ Decode the mod.bam with MM/ML tag into read level prediction:
                        --outfile HiFi.Site.5mC.fre
 
 Output file of "HiFi.Site.5mC.fre" reports DNA 5mC frequency on CpG site.
+
+The tab-delimited file of "HiFi.Site.5mC.fre" is in the following format:
+
+chrom: chromosome
+pos: 1-based coordinate of the CpG on the reference genome
+strand: +/-, the aligned strand of the read to the reference
+depth: total read depths
+count_based: count-based prediction
+model_based: model-based prediction
 
 
 
