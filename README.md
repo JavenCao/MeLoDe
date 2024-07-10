@@ -1,5 +1,5 @@
 # MeLoDe
-DNA methylation detection from low-depth long-read sequencing
+__De__tect DNA __Me__thylaion from __Lo__w-depth long-read sequencing
 
 ## Quick start:
 Using HiFi reads, we demonstrate how to use MeLoDe.
@@ -9,7 +9,7 @@ But be in mind that MeLoDe can be run on subreads as well.
 
 From **unaligned HiFi reads**:
 
-        MeLoDe ReadPre --bamfile m64284e_230525_074225_hifi.bam \
+        MeLoDe_ReadPre --bamfile m64284e_230525_074225_hifi.bam \
                        --datatype HIFI \
                        --inputType unaligned \
                        --outprefix Sample_Name \
@@ -26,22 +26,22 @@ Next, align the 5mC tagged ModBam above to the reference genome using pbmm2:
 
 Decode the mod.bam with MM/ML tag into read level prediction:
 
-        MeLoDe TagExtract --modbam Aligned_Sample_Name.5mc.mod.unaligned.bam \
+        MeLoDe_TagExtract --modbam Aligned_Sample_Name.5mc.mod.unaligned.bam \
                           --outfile Hpre.Read.level.meth.prob.txt.gz
         
-        MeLoDe SitePre --Hpre Hpre.Read.level.meth.prob.txt.gz \
+        MeLoDe_SitePre --Hpre Hpre.Read.level.meth.prob.txt.gz \
                        --outfile HiFi.Site.5mC.fre
 
 Output file of "HiFi.Site.5mC.fre" reports DNA 5mC frequency on CpG site.
 
 The tab-delimited file of "HiFi.Site.5mC.fre" is in the following format:
 
-1. chrom: chromosome
-2. pos: 1-based coordinate of the CpG on the reference genome
-3. strand: +/-, the aligned strand of the read to the reference
-4. depth: total read depths
-5. count_based: count-based prediction
-6. model_based: model-based prediction
+        1. chrom: chromosome
+        2. pos: 1-based coordinate of the CpG on the reference genome
+        3. strand: +/-, the aligned strand of the read to the reference
+        4. depth: total read depths
+        5. count_based: count-based prediction
+        6. model_based: model-based prediction
 
 
 
