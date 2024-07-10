@@ -1,7 +1,6 @@
 import re
 import time
 import pysam
-# 2024-01-02:random choice is used when taking ccs from subreads
 import random
 import array
 import gzip
@@ -16,53 +15,40 @@ from collections import Counter
 #
 def get_args():
     parser = argparse.ArgumentParser()
-    # input related parameters
-    parser.add_argument("-inType","--inputType", required=True, help="aligned or unaligned")
+    # input parameters
     parser.add_argument("-bam", "--bamfile", required=True, help="aligned/unaligned BAM file with kinetic signals, fi/fp/ri/rp for hifi reads, and ip/pw for subreads")
-    parser.add_argument("-type", "--datatype", required=True, default='HIFI', help="data mode, SUBREAD or HIFI")
-    parser.add_argument("-cg", "--cpgbed", required=False, help="CpG position, column1 is chr, column2 is pos, such as chr1 132. Here pos is 1-based coordinate on Rreference's forward strand")
-    parser.add_argument("-r", "--radius", required=False, default='10',type=int, help="cpg +/- r")
-    parser.add_argument("-min", "--minsubreadsdepth", required=False, default='1', type=int, help="min subreads depth for a ZMW to be included")
-    parser.add_argument("-max", "--maxsubreadsdepth", required=False, default='60', type=int, help="max subreads depth for a ZMW to be included")
-    parser.add_argument("-maq", "--MappingQuality", required=False, default='30', type=int, help="min mapping quality for a read to be included")
-    parser.add_argument("-chr", "--Chromosome", required=False, default="whole_genome", help="processing chromosome")
-    parser.add_argument("-j", "--modeljson",required=False,  help="json file of the model, json file")
-    parser.add_argument("-w", "--modelweights", required=False, help="weights of the model, h5 file")
-    # processing parameters
-    parser.add_argument("-p", "--Processor", required=False, type=int,help="Parallelism processors")
-    # output related parameters
-    parser.add_argument("-sc", "--Scale", required=False, action='store_true',default=False, help="flag to indicate scale the signal of each subreads, (x-mean)/std. Without this tag is raw signal value")
+    parser.add_argument("-bamstatus", "--InBamStatus",required=True, help="aligned or unaligned")
+    parser.add_argument("-format","--readformat",required=True, default='HIFI', help="read type, SUBREAD or HIFI")
     parser.add_argument("-oe", "--outputType", required=True, help = "Output Types: ModBam,Feature,MoleculeLevel. ModBam: Modification Bam file. | Feature: Feature matrix. | MoleculeLevel: Molecule level modification prediction")
     parser.add_argument("-o", "--outprefix", required=True, help = "[*outprefix*].modification.bam for ModBam outputType.  [*outprefix*].Kmat.txt.gz for Feature outputType. [*outprefix*].SingleMol.pre.txt.gz for MoleculeLevel outputType")
     parser.add_argument("-keepK","--KeepKinetics", required=True, default="remove", help="remove or keep. flag to indicate keep or remove the kinetic sigals in the output Bam file")
-    #
-    # TODOlater other parameters:2023-12-26
-    # (1) CPU numbers
-    # (2) openZMW
-    # (3) models
-    # (4) subreads
-    #
+    # ZMWmeth model files
+    parser.add_argument("-jh", "--hmodeljson",required=False,  help="HiFi reads, json file of the model, json file")
+    parser.add_argument("-wh", "--hmodelweights", required=False, help="HiFi reads, weights of the model, h5 file")
     parser.add_argument("-jc", "--cmodeljson",required=False,  help="closedZMW subreads, json file of the model, json file")
     parser.add_argument("-wc", "--cmodelweights", required=False, help="closedZMW subreads, weights of the model, h5 file")
     parser.add_argument("-jo", "--omodeljson",required=False,  help="openZMW subreads, json file of the model, json file")
     parser.add_argument("-wo", "--omodelweights", required=False, help="openZMW subreads, weights of the model, h5 file")
-
+    # control parameters
+    parser.add_argument("-r", "--radius", required=False, default='10',type=int, help="CpG +/- r base pairs will be included in the read-level prediction")
+    parser.add_argument("-min", "--minsubreadsdepth", required=False, default='1', type=int, help="min subreads depth for a ZMW to be included")
+    parser.add_argument("-max", "--maxsubreadsdepth", required=False, default='60', type=int, help="max subreads depth for a ZMW to be included")
+    parser.add_argument("-maq", "--MappingQuality", required=False, default='30', type=int, help="min mapping quality for a read to be included")
+    parser.add_argument("-p", "--Processor", required=False, type=int,help="Parallelism processors")
+    parser.add_argument("-ref","--Reference", required=False, help="The reference genome in fasta format when the input is an aligned bam")
+    parser.add_argument("-sc", "--Scale", required=False, action='store_true',default=False, help="flag to indicate scale the signal of each subreads, (x-mean)/std. Without this tag is raw signal value")
+    parser.add_argument("-chr", "--Chromosome", required=False, default="whole_genome", help="processing chromosome")
     return parser.parse_args()
 #  
 #
 if __name__ == "__main__":
-    # testing file:
-    # topbam="/storage/yangjianLab/caoyujie/project/meth/Raw_data/Cell_lines/HG01109/me/generate_hifi/m64284e_230525_074225/m64284e_230525_074225_hifi.bam"
-    # bamfile="/storage/yangjianLab/caoyujie/project/meth/Bam_file/4_hifi_subreads/HG01109_WT_hifi/speed_testing_debug/chr22_5x.sort.HG01109_WT_hifi.aln.bam"
-    # cgfile="/storage/yangjianLab/caoyujie/project/meth/5_Replication/pbMC/cpos/hg38/chr/chr22.cpos1.list"
-    # modelweightsFile="/storage/yangjianLab/caoyujie/project/meth/5_Replication/3_Training_ground/zmw_model/factors/4_ancesty/7_train_by_all/2_ZMW_model/ZMW_model_5_inds.json.weights.h5"
-    # modeljsonFile="/storage/yangjianLab/caoyujie/project/meth/5_Replication/3_Training_ground/zmw_model/factors/4_ancesty/7_train_by_all/2_ZMW_model/ZMW_model_5_inds.json"
+
     args = get_args()
     #
     #
-    inputType = args.inputType
     bamf = args.bamfile
-    datatype = args.datatype
+    inputType = args.InBamStatus
+    datatype = args.readformat
     outputType = args.outputType
     outputp = args.outprefix    
     KiFlag = args.KeepKinetics
@@ -78,8 +64,6 @@ if __name__ == "__main__":
         mappingQ = int(args.MappingQuality)
     if args.Chromosome:
         processingChr = args.Chromosome
-
-
     if args.Processor:
         proc = int(args.Processor)
     if args.Scale:
@@ -91,9 +75,9 @@ if __name__ == "__main__":
                 outfile = outputp + ".Kmat.txt.gz"
                 TOP_HiFiReadsFeature(Topbam=bamf, outfile=outfile, minsubdep=minsubdep, maxsubdep=maxsubdep, R=R, scaleFlag=scaleFlag)
             if outputType == "ModBam":
-                if args.modeljson and args.modelweights:
-                    modeljsonFile = args.modeljson
-                    modelweightsFile = args.modelweights
+                if args.hmodeljson and args.hmodelweights:
+                    modeljsonFile = args.hmodeljson
+                    modelweightsFile = args.hmodelweights
                     json_file = open(modeljsonFile, 'r')
                     loaded_model_json = json_file.read()
                     json_file.close()
@@ -107,49 +91,63 @@ if __name__ == "__main__":
         #
         if inputType == "aligned":
             if outputType == "Feature":
-                if args.cpgbed:
-                    cgfile = args.cpgbed
-                    cglist = Buildcglist_dict(cgfile, processingChr)
+                if args.Reference:
+                    cglist = Buildcglist_dict_Seq(args.Reference)
                     outfile = outputp + ".Kmat.txt.gz"
                     Aligned_HiFiReadsFeature(bamf, cglist, outfile, minsubdep, maxsubdep, mappingQ, R, scaleFlag)
                 else:
-                    print("error! Please input cpgbed file")
+                    print("error! Please input Reference file used for the alined bam file you provided")
 
             else:
-
                 if outputType == "ModBam" or outputType == "MoleculeLevel":
-                    if args.modeljson and args.modelweights and args.cpgbed:
-                        modeljsonFile = args.modeljson
-                        modelweightsFile = args.modelweights
+                    if args.hmodeljson and args.hmodelweights and args.Reference:
+                        modeljsonFile = args.hmodeljson
+                        modelweightsFile = args.hmodelweights
                         json_file = open(modeljsonFile, 'r')
                         loaded_model_json = json_file.read()
                         json_file.close()
                         loaded_model = model_from_json(loaded_model_json)
                         loaded_model.load_weights(modelweightsFile)
-                        cgfile = args.cpgbed
-                        cglist = Buildcglist_dict(cgfile, processingChr)
+                        cglist = Buildcglist_dict_Seq(args.Reference)
                         Aligned_HiFiReadsMeth(bamf, cglist, outputp, outputType, minsubdep, maxsubdep, mappingQ, R, scaleFlag, KiFlag, loaded_model)
                     else:
-                        print("error! Please input model file, weights file and cpg_position file")
+                        print("error! Please input model file for hifi reads, weights file for hifi reads and the Reference file")
                 else:
                     print("error! outputType should be ModBam or MoleculeLevel")
     #
     if datatype == "SUBSEAD":
-        if outputType == "Feature":
-            if args.cpgbed:
-                cgfile = args.cpgbed
-                cglist = Buildcglist_dict(cgfile, processingChr)
-                outfile = outputp + ".Kmat.txt.gz"
-                Aligned_subreadsBam_Feature(bamf, cglist, outputp, outputType, mappingQ, R, scaleFlag)
-            else:
-                print("error! Please input cpgbed file")
-        if outputType == "MoleculeLevel":
-            if args.modeljson and args.modelweights:
-                closedZMW_subreads_model = model.load
-                openZMW_subreads_model = model.load
-                Aligned_subreadsBam_Meth(bamf, cglist, outputp, outputType, mappingQ, R, scaleFlag,closedZMW_subreads_model,openZMW_subreads_model)
-            else:
-                print("error! Please input model file, weights file and cpg_position file")
+        if inputType == "aligned":
+            if outputType == "Feature":
+                if args.Reference:
+                    cglist = Buildcglist_dict_Seq(args.Reference)
+                    outfile = outputp + ".Kmat.txt.gz"
+                    Aligned_subreadsBam_Feature(bamf, cglist, outputp, outputType, mappingQ, R, scaleFlag)
+                else:
+                    print("error! Please input Reference file used for the aligned bam file you provided")
+
+            if outputType == "MoleculeLevel":
+                if args.cmodeljson and args.cmodelweights and args.omodeljson and args.omodelweights:
+                    # load closedZMW model
+                    cmodeljsonFile = args.cmodeljson
+                    cmodelweightsFile = args.cmodelweights
+                    json_file = open(cmodeljsonFile, 'r')
+                    loaded_model_json = json_file.read()
+                    json_file.close()
+                    closedZMW_subreads_model = model_from_json(loaded_model_json)
+                    closedZMW_subreads_model.load_weights(cmodelweightsFile)
+                    # load openZMW model
+                    omodeljsonFile = args.omodeljson
+                    omodelweightsFile = args.omodelweights
+                    json_file = open(omodeljsonFile, 'r')
+                    loaded_model_json = json_file.read()
+                    json_file.close()
+                    openZMW_subreads_model = model_from_json(loaded_model_json)
+                    openZMW_subreads_model.load_weights(omodelweightsFile)
+                    Aligned_subreadsBam_Meth(bamf, cglist, outputp, outputType, mappingQ, R, scaleFlag,closedZMW_subreads_model, openZMW_subreads_model)
+                else:
+                    print("error! Please input ZMWmeth models for closedZMW and openZMW, as well as the weights")
+        else:
+            print("error! Subreads data should be alined to the reference genome")
 else:
     pass
 #
@@ -1310,16 +1308,18 @@ def Con_posSEQ_to_posRead(read_is_reverse, read_length, pos_on_SEQ_dict):
             pos_on_top_strand[cpg] = pos_on_top
     return pos_on_top_strand
 #
-# 2024-01-23
-# below are under development for the purpose of creating cpg_pos.bed from Ref.fa
 #
 def Buildcglist_dict_Seq(infasta):
+    """
+    Freeze 2024-07-10:
+    Get the 'CG' 1-based position on the reference genome
+    """
     cglist_dict = defaultdict(list)
     with pysam.FastxFile(infasta) as fh:
         for entry in fh:
             chr_name = entry.name
             chr_seq = entry.sequence
-            position_list = pattern_search(chr_name, chr_seq, patternstring='CG')
+            position_list = pattern_search(chr_name, chr_seq, pattern='CG')
             # write to file
             cglist_dict[chr_name] = position_list
     # Sort values numerically based on div[1]
