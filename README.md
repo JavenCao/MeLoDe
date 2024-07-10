@@ -1,5 +1,5 @@
 # MeLoDe
-**De**tect DNA **Me**thylaion from **Lo**w-depth long-read sequencing
+ <u>**De**</u>tect DNA **Me**thylaion from **Lo**w-depth long-read sequencing
 
 ## Quick start:
 Using HiFi reads, we demonstrate how to use MeLoDe.
