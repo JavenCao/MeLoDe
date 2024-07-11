@@ -7,10 +7,11 @@ import gzip
 import argparse
 import numpy as np
 import pandas as pd
-from readpredict import *
 from collections import defaultdict
-from keras.models import model_from_json
+import tensorflow as tf
 from collections import Counter
+import sys
+from MeLoDe_Read import *
 #
 #
 def get_args():
@@ -23,12 +24,9 @@ def get_args():
     parser.add_argument("-o", "--outprefix", required=True, help = "[*outprefix*].modification.bam for ModBam outputType.  [*outprefix*].Kmat.txt.gz for Feature outputType. [*outprefix*].SingleMol.pre.txt.gz for MoleculeLevel outputType")
     parser.add_argument("-keepK","--KeepKinetics", required=True, default="remove", help="remove or keep. flag to indicate keep or remove the kinetic sigals in the output Bam file")
     # ZMWmeth model files
-    parser.add_argument("-jh", "--hmodeljson",required=False,  help="HiFi reads, json file of the model, json file")
-    parser.add_argument("-wh", "--hmodelweights", required=False, help="HiFi reads, weights of the model, h5 file")
-    parser.add_argument("-jc", "--cmodeljson",required=False,  help="closedZMW subreads, json file of the model, json file")
-    parser.add_argument("-wc", "--cmodelweights", required=False, help="closedZMW subreads, weights of the model, h5 file")
-    parser.add_argument("-jo", "--omodeljson",required=False,  help="openZMW subreads, json file of the model, json file")
-    parser.add_argument("-wo", "--omodelweights", required=False, help="openZMW subreads, weights of the model, h5 file")
+    parser.add_argument("-H","--HDir", required=False, help="ZMWmeth-HiFi model directory")
+    parser.add_argument("-C","--CDir", required=False, help="ZMWmeth-ClosedZMW model directory")
+    parser.add_argument("-O","--ODir", required=False, help="ZMWmeth-OpenZMW model directory")
     # control parameters
     parser.add_argument("-r", "--radius", required=False, default='10',type=int, help="CpG +/- r base pairs will be included in the read-level prediction")
     parser.add_argument("-min", "--minsubreadsdepth", required=False, default='1', type=int, help="min subreads depth for a ZMW to be included")
@@ -75,19 +73,13 @@ if __name__ == "__main__":
                 outfile = outputp + ".Kmat.txt.gz"
                 TOP_HiFiReadsFeature(Topbam=bamf, outfile=outfile, minsubdep=minsubdep, maxsubdep=maxsubdep, R=R, scaleFlag=scaleFlag)
             if outputType == "ModBam":
-                if args.hmodeljson and args.hmodelweights:
-                    modeljsonFile = args.hmodeljson
-                    modelweightsFile = args.hmodelweights
-                    json_file = open(modeljsonFile, 'r')
-                    loaded_model_json = json_file.read()
-                    json_file.close()
-                    loaded_model = model_from_json(loaded_model_json)
-                    loaded_model.load_weights(modelweightsFile)
+                if args.HDir:
+                    loaded_model = tf.saved_model.load(args.HDir)
                     outputfile = outputp + ".5mc.mod.unaligned.bam"
                     TOP_HiFiReadsMeth(Topbam=bamf, modTopbam=outputfile, minsubdep=minsubdep, maxsubdep=maxsubdep, R=R, scaleFlag=scaleFlag, KiFlag=KiFlag, loaded_model=loaded_model)
                 else:
-                    print("error! Please input model and model weights")
-        #    
+                    print("error! --HDir is missing!")
+                    sys.exit()
         #
         if inputType == "aligned":
             if outputType == "Feature":
@@ -96,24 +88,20 @@ if __name__ == "__main__":
                     outfile = outputp + ".Kmat.txt.gz"
                     Aligned_HiFiReadsFeature(bamf, cglist, outfile, minsubdep, maxsubdep, mappingQ, R, scaleFlag)
                 else:
-                    print("error! Please input Reference file used for the alined bam file you provided")
-
+                    print("error! Please input --Reference file used for the alined bam file you provided")
+                    sys.exit()
             else:
                 if outputType == "ModBam" or outputType == "MoleculeLevel":
-                    if args.hmodeljson and args.hmodelweights and args.Reference:
-                        modeljsonFile = args.hmodeljson
-                        modelweightsFile = args.hmodelweights
-                        json_file = open(modeljsonFile, 'r')
-                        loaded_model_json = json_file.read()
-                        json_file.close()
-                        loaded_model = model_from_json(loaded_model_json)
-                        loaded_model.load_weights(modelweightsFile)
+                    if args.HDir and args.Reference:
+                        loaded_model = tf.saved_model.load(args.HDir)
                         cglist = Buildcglist_dict_Seq(args.Reference)
                         Aligned_HiFiReadsMeth(bamf, cglist, outputp, outputType, minsubdep, maxsubdep, mappingQ, R, scaleFlag, KiFlag, loaded_model)
                     else:
-                        print("error! Please input model file for hifi reads, weights file for hifi reads and the Reference file")
+                        print("error! --HDir is missing, or --Reference is missing, or both are missing")
+                        sys.exit()
                 else:
                     print("error! outputType should be ModBam or MoleculeLevel")
+                    sys.exit()
     #
     if datatype == "SUBSEAD":
         if inputType == "aligned":
@@ -123,31 +111,22 @@ if __name__ == "__main__":
                     outfile = outputp + ".Kmat.txt.gz"
                     Aligned_subreadsBam_Feature(bamf, cglist, outputp, outputType, mappingQ, R, scaleFlag)
                 else:
-                    print("error! Please input Reference file used for the aligned bam file you provided")
-
+                    print("error! Please input --Reference file used for the aligned bam file you provided")
+                    sys.exit()
             if outputType == "MoleculeLevel":
-                if args.cmodeljson and args.cmodelweights and args.omodeljson and args.omodelweights:
+                if args.CDir and args.ODir:
                     # load closedZMW model
-                    cmodeljsonFile = args.cmodeljson
-                    cmodelweightsFile = args.cmodelweights
-                    json_file = open(cmodeljsonFile, 'r')
-                    loaded_model_json = json_file.read()
-                    json_file.close()
-                    closedZMW_subreads_model = model_from_json(loaded_model_json)
-                    closedZMW_subreads_model.load_weights(cmodelweightsFile)
+                    closedZMW_subreads_model = tf.saved_model.load(args.CDir)
                     # load openZMW model
-                    omodeljsonFile = args.omodeljson
-                    omodelweightsFile = args.omodelweights
-                    json_file = open(omodeljsonFile, 'r')
-                    loaded_model_json = json_file.read()
-                    json_file.close()
-                    openZMW_subreads_model = model_from_json(loaded_model_json)
-                    openZMW_subreads_model.load_weights(omodelweightsFile)
+                    openZMW_subreads_model = tf.saved_model.load(args.ODir)
+                    #
                     Aligned_subreadsBam_Meth(bamf, cglist, outputp, outputType, mappingQ, R, scaleFlag,closedZMW_subreads_model, openZMW_subreads_model)
                 else:
-                    print("error! Please input ZMWmeth models for closedZMW and openZMW, as well as the weights")
+                    print("error! Please input ZMWmeth models for closedZMW(--CDir) and openZMW(--ODir)")
+                    sys.exit()
         else:
             print("error! Subreads data should be alined to the reference genome")
+            sys.exit()
 else:
     pass
 #
