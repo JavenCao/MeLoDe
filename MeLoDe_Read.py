@@ -1,5 +1,4 @@
 import re
-import time
 import pysam
 import random
 import array
@@ -19,7 +18,7 @@ def get_args():
     # input parameters
     parser.add_argument("-bam", "--bamfile", required=True, help="aligned/unaligned BAM file with kinetic signals, fi/fp/ri/rp for hifi reads, and ip/pw for subreads")
     parser.add_argument("-bamstatus", "--InBamStatus",required=True, help="aligned or unaligned")
-    parser.add_argument("-format","--readformat",required=True, default='HIFI', help="read type, SUBREAD or HIFI")
+    parser.add_argument("-format","--readformat",required=True, help="read type, SUBREAD or HIFI")
     parser.add_argument("-oe", "--outputType", required=True, help = "Output Types: ModBam,Feature,MoleculeLevel. ModBam: Modification Bam file. | Feature: Feature matrix. | MoleculeLevel: Molecule level modification prediction")
     parser.add_argument("-o", "--outprefix", required=True, help = "[*outprefix*].modification.bam for ModBam outputType.  [*outprefix*].Kmat.txt.gz for Feature outputType. [*outprefix*].SingleMol.pre.txt.gz for MoleculeLevel outputType")
     parser.add_argument("-keepK","--KeepKinetics", required=True, default="remove", help="remove or keep. flag to indicate keep or remove the kinetic sigals in the output Bam file")
@@ -48,7 +47,7 @@ if __name__ == "__main__":
     inputType = args.InBamStatus
     datatype = args.readformat
     outputType = args.outputType
-    outputp = args.outprefix    
+    outputp = args.outprefix
     KiFlag = args.KeepKinetics
     #
     #
@@ -80,8 +79,7 @@ if __name__ == "__main__":
                 else:
                     print("error! --HDir is missing!")
                     sys.exit()
-        #
-        if inputType == "aligned":
+        elif inputType == "aligned":
             if outputType == "Feature":
                 if args.Reference:
                     cglist = Buildcglist_dict_Seq(args.Reference)
@@ -102,6 +100,9 @@ if __name__ == "__main__":
                 else:
                     print("error! outputType should be ModBam or MoleculeLevel")
                     sys.exit()
+        else:
+            print("--InBamStatu should be aligned or unaligned")
+            sys.exit()
     #
     if datatype == "SUBSEAD":
         if inputType == "aligned":
