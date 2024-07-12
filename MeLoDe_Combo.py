@@ -5,17 +5,19 @@ import pandas as pd
 from collections import defaultdict
 from keras.models import model_from_json
 from numpy.lib.stride_tricks import sliding_window_view
-from sitepredict import *
+from MeLoDe_Combo import *
+import tensorflow as tf
+
 #
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-hifizmw", "--HiFiZMWpre", help="HiFi reads - single molecule level prediction. File format: txt.gz")
-    parser.add_argument("-allzmw", "--ALLZMWpre", default="NA", help="ZMW prediction - all molecules' predictions. File format: txt.gz")
-    parser.add_argument("-minZMWdep", "--minZMWdepth",help="min ZMW_molecule/HiFi_reads/CCS_reads depth")
-    parser.add_argument("-r","--windowRadius", help="how many CpG sites in a sliding window? (2 * r + 1)")
-    parser.add_argument("-j", "--modeljson", help="json file of the model, json file")
-    parser.add_argument("-w", "--modelweights", help="weights of the model, h5 file")
-    parser.add_argument("-o", "--outputfile", help="CpG site level methylation frequency")
+    parser.add_argument("-hifizmw", "--HiFiZMWpre", required=True, help="HiFi reads - single molecule level prediction. File format: txt.gz")
+    parser.add_argument("-subreadszmw", "--SubreadsZMWpre", required=True, help="ZMW prediction using subreads. File format: txt.gz")
+    parser.add_argument("-model","--modelDir",required=True, help="Joint-CpG model directory for MeLoDe-Combo")
+    parser.add_argument("-o", "--outputfile", required=True, help="CpG site level methylation frequency")
+    #
+    parser.add_argument("-minZMWdep", "--minZMWdepth", required=False, default='4', type=int, help="min ZMW_molecule/HiFi_reads/CCS_reads depth")
+    parser.add_argument("-r","--windowRadius", required=False, default='10', type=int, help="how many CpG sites in a sliding window? (2 * r + 1)")
     return parser.parse_args()
 #
 if __name__ == "__main__":
@@ -23,24 +25,21 @@ if __name__ == "__main__":
     args = get_args()
     #
     ZMWprefile_HiFi_raw = args.HiFiZMWpre
-    ALLZMW_prefile = args.ALLZMWpre
+    ALLZMW_prefile = args.SubreadsZMWpre
     minZMWdepth = int(args.minZMWdepth)
     R = int(args.windowRadius)
-    modeljsonFile = args.modeljson
-    modelweightsFile = args.modelweights
     outputfile = args.outputfile
     # ------------------------------------------------------------------------------------------
     # step1: model loading
-    json_file = open(modeljsonFile, 'r')
-    loaded_model_json = json_file.read()
-    json_file.close()
-    loaded_model = model_from_json(loaded_model_json)
-    loaded_model.load_weights(modelweightsFile)
+    loaded_model = tf.saved_model.load(args.modelDir)
     # ------------------------------------------------------------------------------------------
     # step2: read in read-level prediction
     ZMWprobDict_norm = {}
-    ZMWprobDict_norm, predictions_count = normZMWprediction_HCO(ZMWprefile_HiFi, ALLZMW_prefile, minZMWdepth)
+    ZMWprobDict_norm, predictions_count, molecule_depth = normZMWprediction_HCO(ZMWprefile_HiFi, ALLZMW_prefile, minZMWdepth)
+
+
     X_test, X_ave_weights, ZMWprobDict_poslist_sorted = CreateDataMatrix_distance_testing(ZMWprobDict_norm, R)
+    
     # ------------------------------------------------------------------------------------------
     # step3: do the prediction
     predictions_model = loaded_model.predict(X_test)
@@ -48,6 +47,8 @@ if __name__ == "__main__":
     # step4: format to write out
     Chr_info = [x.split("_")[0] for x in ZMWprobDict_poslist_sorted]
     Pos_info = [x.split("_")[1] for x in ZMWprobDict_poslist_sorted]
+    # 2024-07-11
+    molecule_depth_info = [molecule_depth[x] for x in ZMWprobDict_poslist_sorted]
     #
     predictions_count_trim = [predictions_count[x][0] for x in ZMWprobDict_poslist_sorted]
     predictions_count_trim_me_count = [predictions_count[x][1] for x in ZMWprobDict_poslist_sorted]
@@ -55,13 +56,15 @@ if __name__ == "__main__":
     #
     df_SiteLevelPre = pd.DataFrame({"Chr":Chr_info,
                                     "PosC":Pos_info,
+                                    "molecule_cov":molecule_depth_info,
                                     "model_based":predictions_model.flatten(),
                                     "count_based":predictions_count_trim,
                                     "Me":predictions_count_trim_me_count,
                                     "unMeth":predictions_count_trim_ume_count,
-                                    "cisCpG_ave_weights":X_ave_weights.flatten(),
+                                    # "cisCpG_ave_weights":X_ave_weights.flatten(),
         })
-    df_SiteLevelPre = df_SiteLevelPre[["Chr", "PosC", "model_based","count_based", "Me", "unMeth", "cisCpG_ave_weights"]]
+    # df_SiteLevelPre = df_SiteLevelPre[["Chr", "PosC", "molecule_cov", "model_based", "count_based", "Me", "unMeth", "cisCpG_ave_weights"]]
+    df_SiteLevelPre = df_SiteLevelPre[["Chr", "PosC", "molecule_cov", "model_based", "count_based", "Me", "unMeth"]]
     prefile = outputfile + ".JointCpG.pre.txt.gz"
     df_SiteLevelPre.to_csv(prefile, sep='\t', index=False, compression='gzip')
     # ------------------------------------------------------------------------------------------
@@ -71,6 +74,7 @@ else:
 #
 def normZMWprediction_HCO(ZMWprefile_HiFi,  ALLZMW_prefile, minZMWdepth):
     """
+    Modified, 2024-07-11
     Freeze,2024-01-19
         INPUT: HiFi read level prediction
                nonHiFi ZMW level prediction
@@ -81,6 +85,7 @@ def normZMWprediction_HCO(ZMWprefile_HiFi,  ALLZMW_prefile, minZMWdepth):
     ZMWprobDict_Raw = defaultdict(lambda: [[], [], []])
     ZMWprobDict_norm = {}
     count_based_pred_dict = {}
+    depth_of_mol_cov_dict = {}
     #
     processed_pos = set()
     #
@@ -90,7 +95,7 @@ def normZMWprediction_HCO(ZMWprefile_HiFi,  ALLZMW_prefile, minZMWdepth):
         # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         for line in f_hifi:
             if not ("nan" in line) and not line.startswith('Chr'):
-                Chr, PosC, ZMWid, ZMWTdep, ZMWtype, Hap, HapBlk, strand, ZMWprob, preclass = line.rstrip("\n").split()
+                Chr, PosC, ZMWid, ZMWtype, ZMWTdep, Hap, HapBlk, strand, ZMWprob, preclass = line.rstrip("\n").split()
                 linekey = f"{Chr}_{PosC}"
                 zmwkey = f"{linekey}_{ZMWid}"
                 ZMWprobDict_Raw[linekey][0].append(float(ZMWprob))
@@ -100,7 +105,7 @@ def normZMWprediction_HCO(ZMWprefile_HiFi,  ALLZMW_prefile, minZMWdepth):
         for line in f_closed_open:
             if not ("nan" in line) and not line.startswith('Chr'):
                 # ZMWtype "H" "C "O"
-                Chr, PosC, ZMWid, ZMWTdep, ZMWtype, Hap, HapBlk, strand, ZMWprob, preclass = line.rstrip("\n").split()
+                Chr, PosC, ZMWid, ZMWtype, ZMWTdep, Hap, HapBlk, strand, ZMWprob, preclass = line.rstrip("\n").split()
                 linekey = f"{Chr}_{PosC}"
                 zmwkey = f"{linekey}_{ZMWid}"
                 if zmwkey not in processed_HiFi_zmwid:
@@ -123,13 +128,14 @@ def normZMWprediction_HCO(ZMWprefile_HiFi,  ALLZMW_prefile, minZMWdepth):
             me_molecules = np.sum((np.array(ZMWprobDict_Raw[pos][0])>0.5).astype(int)) + np.sum((np.array(ZMWprobDict_Raw[pos][1])>0.5).astype(int)) + np.sum((np.array(ZMWprobDict_Raw[pos][2])>0.5).astype(int))
             count_based_DNAm_freq = me_molecules/total_molecules
             count_based_pred_dict[pos] = [count_based_DNAm_freq, me_molecules, total_molecules-me_molecules]
+            depth_of_mol_cov_dict[pos] = total_molecules
             #
             HiFi_norm_prob_list = get_normalized_histo(HiFi_raw_prob_list)# len=10
             Closed_norm_prob_list = get_normalized_histo(Closed_raw_prob_list)# len=10
             Open_norm_prob_list = get_normalized_histo(Open_raw_prob_list)# len=10
             # -------
             ZMWprobDict_norm[pos] = np.concatenate([HiFi_norm_prob_list, Closed_norm_prob_list, Open_norm_prob_list, np.array([count_based_DNAm_freq])])
-    return ZMWprobDict_norm, count_based_pred_dict
+    return ZMWprobDict_norm, count_based_pred_dict, depth_of_mol_cov_dict
 #
 #
 def get_normalized_histo(probs):
