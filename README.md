@@ -9,11 +9,11 @@ But be in mind that MeLoDe can be run on subreads as well.
 
 From **unaligned HiFi reads**:
 
-        MeLoDe_ReadPre --bamfile m64284e_230525_074225_hifi.bam \
-                       --datatype HIFI \
-                       --inputType unaligned \
-                       --outprefix Sample_Name \
-                       --outputType ModBam
+        MeLoDe_Read --bamfile m64284e_230525_074225_hifi.bam \
+                    --datatype HIFI \
+                    --inputType unaligned \
+                    --outprefix Sample_Name \
+                    --outputType ModBam
 
 "Sample_Name.5mc.mod.unaligned.bam" will be generated, in which the MM/ML tag is created, tagging the positions and 5mC probabilities of CpGs on reads.
 Adding "--KeepKinetics keep" will keep the fi/fp/ri/rp tags, otherwise removed.
@@ -29,8 +29,8 @@ Decode the mod.bam with MM/ML tag into read level prediction:
         MeLoDe_TagExtract --modbam Aligned_Sample_Name.5mc.mod.unaligned.bam \
                           --outfile Hpre.Read.level.meth.prob.txt.gz
         
-        MeLoDe_SitePre --Hpre Hpre.Read.level.meth.prob.txt.gz \
-                       --outfile HiFi.Site.5mC.fre
+        MeLoDe_Site --Hpre Hpre.Read.level.meth.prob.txt.gz \
+                    --outfile HiFi.Site.5mC.fre
 
 Output file of "HiFi.Site.5mC.fre" reports DNA 5mC frequency on CpG site.
 
