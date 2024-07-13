@@ -3,7 +3,6 @@ import argparse
 import numpy as np
 import pandas as pd
 from collections import defaultdict
-from keras.models import model_from_json
 from numpy.lib.stride_tricks import sliding_window_view
 from MeLoDe_Combo import *
 import tensorflow as tf
@@ -17,15 +16,15 @@ def get_args():
     parser.add_argument("-o", "--outputfile", required=True, help="CpG site level methylation frequency")
     #
     parser.add_argument("-minZMWdep", "--minZMWdepth", required=False, default='4', type=int, help="min ZMW_molecule/HiFi_reads/CCS_reads depth")
-    parser.add_argument("-r","--windowRadius", required=False, default='10', type=int, help="how many CpG sites in a sliding window? (2 * r + 1)")
+    parser.add_argument("-r","--windowRadius", required=False, default='5', type=int, help="how many CpG sites in a sliding window? (2 * r + 1)")
     return parser.parse_args()
 #
 if __name__ == "__main__":
     # --------
     args = get_args()
     #
-    ZMWprefile_HiFi_raw = args.HiFiZMWpre
-    ALLZMW_prefile = args.SubreadsZMWpre
+    ZMWprefile_HiFi = args.HiFiZMWpre
+    ZMWprefile_ZMW = args.SubreadsZMWpre
     minZMWdepth = int(args.minZMWdepth)
     R = int(args.windowRadius)
     outputfile = args.outputfile
@@ -35,11 +34,8 @@ if __name__ == "__main__":
     # ------------------------------------------------------------------------------------------
     # step2: read in read-level prediction
     ZMWprobDict_norm = {}
-    ZMWprobDict_norm, predictions_count, molecule_depth = normZMWprediction_HCO(ZMWprefile_HiFi, ALLZMW_prefile, minZMWdepth)
-
-
+    ZMWprobDict_norm, predictions_count, molecule_depth = normZMWprediction_HCO(ZMWprefile_HiFi, ZMWprefile_ZMW, minZMWdepth)
     X_test, X_ave_weights, ZMWprobDict_poslist_sorted = CreateDataMatrix_distance_testing(ZMWprobDict_norm, R)
-    
     # ------------------------------------------------------------------------------------------
     # step3: do the prediction
     predictions_model = loaded_model.predict(X_test)
@@ -47,7 +43,6 @@ if __name__ == "__main__":
     # step4: format to write out
     Chr_info = [x.split("_")[0] for x in ZMWprobDict_poslist_sorted]
     Pos_info = [x.split("_")[1] for x in ZMWprobDict_poslist_sorted]
-    # 2024-07-11
     molecule_depth_info = [molecule_depth[x] for x in ZMWprobDict_poslist_sorted]
     #
     predictions_count_trim = [predictions_count[x][0] for x in ZMWprobDict_poslist_sorted]
@@ -61,11 +56,10 @@ if __name__ == "__main__":
                                     "count_based":predictions_count_trim,
                                     "Me":predictions_count_trim_me_count,
                                     "unMeth":predictions_count_trim_ume_count,
-                                    # "cisCpG_ave_weights":X_ave_weights.flatten(),
+                                    "cisCpG_ave_weights":X_ave_weights.flatten(),
         })
-    # df_SiteLevelPre = df_SiteLevelPre[["Chr", "PosC", "molecule_cov", "model_based", "count_based", "Me", "unMeth", "cisCpG_ave_weights"]]
-    df_SiteLevelPre = df_SiteLevelPre[["Chr", "PosC", "molecule_cov", "model_based", "count_based", "Me", "unMeth"]]
-    prefile = outputfile + ".JointCpG.pre.txt.gz"
+    df_SiteLevelPre = df_SiteLevelPre[["Chr", "PosC", "molecule_cov", "model_based", "count_based", "Me", "unMeth", "cisCpG_ave_weights"]]
+    prefile = outputfile + ".JointCpG.MeLoDe-Combo.txt.gz"
     df_SiteLevelPre.to_csv(prefile, sep='\t', index=False, compression='gzip')
     # ------------------------------------------------------------------------------------------
 else:
@@ -74,12 +68,11 @@ else:
 #
 def normZMWprediction_HCO(ZMWprefile_HiFi,  ALLZMW_prefile, minZMWdepth):
     """
+    Freeze,2024-07-13
     Modified, 2024-07-11
     Freeze,2024-01-19
-        INPUT: HiFi read level prediction
-               nonHiFi ZMW level prediction
-        Return: ZMWprobDict_norm = [ [ HiFi reads ] [ nonHiFi-subreads-closedZMW ] [ nonHiFi-subreads-openZMW ] ]
-        Notes: ALLZMW_prefile could be "NA", need to check before selecting one file mode or two file mode
+        INPUT: HiFi read level prediction &  nonHiFi ZMW level prediction
+        Return: ZMWprobDict_norm = [ [ HiFi reads ] [ nonHiFi-subreads-closedZMW ] [ nonHiFi-subreads-openZMW ] [count-based prediction] ] &  count_based_pred_dic &  depth_of_mol_cov_dict
     """
     # ZMWprobDict_Raw = {} #[ [ HiFi reads ] [ nonHiFi-subreads-closedZMW ] [ nonHiFi-subreads-openZMW ] ]
     ZMWprobDict_Raw = defaultdict(lambda: [[], [], []])
@@ -98,13 +91,15 @@ def normZMWprediction_HCO(ZMWprefile_HiFi,  ALLZMW_prefile, minZMWdepth):
                 Chr, PosC, ZMWid, ZMWtype, ZMWTdep, Hap, HapBlk, strand, ZMWprob, preclass = line.rstrip("\n").split()
                 linekey = f"{Chr}_{PosC}"
                 zmwkey = f"{linekey}_{ZMWid}"
-                ZMWprobDict_Raw[linekey][0].append(float(ZMWprob))
-                processed_pos.add(linekey)
-                processed_HiFi_zmwid.add(zmwkey)
+                # ZMWtype "H"
+                if ZMWtype == "H":
+                    ZMWprobDict_Raw[linekey][0].append(float(ZMWprob))
+                    processed_pos.add(linekey)
+                    processed_HiFi_zmwid.add(zmwkey)
         # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         for line in f_closed_open:
             if not ("nan" in line) and not line.startswith('Chr'):
-                # ZMWtype "H" "C "O"
+                # ZMWtype "C "O"
                 Chr, PosC, ZMWid, ZMWtype, ZMWTdep, Hap, HapBlk, strand, ZMWprob, preclass = line.rstrip("\n").split()
                 linekey = f"{Chr}_{PosC}"
                 zmwkey = f"{linekey}_{ZMWid}"
@@ -154,8 +149,9 @@ def get_normalized_histo(probs):
 #
 def CreateDataMatrix_distance_testing(ZMWprobDict_norm, R):
     """
+    Modified 2024-07-13
     Freeze 2024-01-19:
-        Input: ZMWprobDict_norm = [ [ HiFi reads ] [ nonHiFi-subreads-closedZMW ] [ nonHiFi-subreads-openZMW ] ]
+        Input: ZMWprobDict_norm = [ [ HiFi reads ] [ nonHiFi-subreads-closedZMW ] [ nonHiFi-subreads-openZMW ][count_based_DNAm_freq] ]
         Return:
     """
     total_normhistos = []
@@ -165,17 +161,18 @@ def CreateDataMatrix_distance_testing(ZMWprobDict_norm, R):
     ZMWprobDict_poslist_sorted = sorted(ZMWprobDict_poslist, key=lambda x: int(x.split('_')[1]))
     #
     for pos in ZMWprobDict_poslist_sorted:
-        total_normhistos.append(ZMWprobDict_norm[pos])
+        total_normhistos.append(ZMWprobDict_norm[pos])#list
         # -----------------------------
         Chr, PosC = pos.split("_")
-        total_pos.append(PosC)
+        total_pos.append(PosC)#539559
         # -----------------------------
-    featPad = np.stack(total_normhistos)
-    featuresWindow = sliding_window_view(featPad, 2*R+1, axis=0)
+    featPad = np.stack(total_normhistos)#length=539559, each element list is 31
+    # 31 = HiFi_norm(10) + ClosedZMW_norm(10) + OpenZMW_norm(10) + Count_based_prediction(1)
+    featuresWindow = sliding_window_view(featPad, 2*R+1, axis=0)#(539549, 31, 11),R=5
     N = featuresWindow.shape[0]
     # -----------------------------
-    featDis = np.stack(total_pos)
-    distance_win = sliding_window_view(featDis, 2*R+1, axis=0)
+    featDis = np.stack(total_pos)#(539559,)
+    distance_win = sliding_window_view(featDis, 2*R+1, axis=0)#(539549, 11)
     # Calculate the centered distances for each window
     centered_distances = []
     for i in range(0,N):
@@ -186,19 +183,21 @@ def CreateDataMatrix_distance_testing(ZMWprobDict_norm, R):
         #
         distances_v1 = 100.0 / (np.sqrt(distances) + 100.0)
         distances_v2 = (distances_v1 - 0.5) / 0.5
-        centered_distances.append(distances_v2.tolist())  # Convert numpy array to list
+        centered_distances.append(distances_v2.tolist())  # Convert numpy array to list, length=539549
+    #
     # merge
     #
-    M = featuresWindow.shape[1]
-    featuresWindow_merge = np.random.random((N, (M+1), 2*R+1))
+    M = featuresWindow.shape[1]# 31 feature
+   # 32 = HiFi_norm(10) + ClosedZMW_norm(10) + OpenZMW_norm(10) + Count_based_prediction(1) + distance_weights(1)
+    featuresWindow_merge = np.random.random((N, (2*R+1), (M+1)))##(539549, 11, 32),R=5
     #
     for i in range(0,N):
-        a = np.array(centered_distances[i])
+        a = np.array(centered_distances[i])#len = 11 = 2R+1
         # -----------------------------------
         ave_a = np.mean(a)
         total_ave_weights.append(ave_a)
-        b = featuresWindow[i]
-        featuresWindow_merge[i] = np.vstack((b, a))
+        b = featuresWindow[i]#len = (31,11)
+        featuresWindow_merge[i] = np.vstack((b, a))#(32,11)
     #
-    featuresWindow_merge = np.swapaxes(featuresWindow_merge, 1, 2)
+    featuresWindow_merge = np.swapaxes(featuresWindow_merge, 1, 2)#(N,11,32), each line of 11 is a surrounding CpG site, 32 is the feature size
     return featuresWindow_merge, np.array(total_ave_weights), ZMWprobDict_poslist_sorted[R:len(ZMWprobDict_poslist)-R]
