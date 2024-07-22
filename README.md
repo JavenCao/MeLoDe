@@ -3,17 +3,18 @@
 
 ## Quick start:
 Using HiFi reads, we demonstrate how to use MeLoDe.
-But be in mind that MeLoDe can be run on subreads as well.
+Be in mind that MeLoDe can be run on subreads, as well.
 
 **Step1: read-level 5mC identification**
 
 From **unaligned HiFi reads**:
 
         MeLoDe_Read --bamfile m64284e_230525_074225_hifi.bam \
-                    --datatype HIFI \
-                    --inputType unaligned \
+                    --InBamStatus unaligned \
+                    --readformat HIFI \
+                    --outputType ModBam \
                     --outprefix Sample_Name \
-                    --outputType ModBam
+                    --KeepKinetics keep
 
 "Sample_Name.5mc.mod.unaligned.bam" will be generated, in which the MM/ML tag is created, tagging the positions and 5mC probabilities of CpGs on reads.
 Adding "--KeepKinetics keep" will keep the fi/fp/ri/rp tags, otherwise removed.
@@ -22,7 +23,7 @@ Next, align the 5mC tagged ModBam above to the reference genome using pbmm2:
 
         pbmm2 align --preset HiFi Ref.fa Sample_Name.5mc.mod.unaligned.bam Aligned_Sample_Name.5mc.mod.unaligned.bam
 
-**Step2:CpG-site level 5mC frequency estimation**
+**Step2: CpG site-level 5mC frequency estimation**
 
 Decode the mod.bam with MM/ML tag into read level prediction:
 
