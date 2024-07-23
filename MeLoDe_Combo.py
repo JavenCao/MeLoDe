@@ -46,6 +46,7 @@ if __name__ == "__main__":
     del(X_test)
     X_test_tensor = tf.cast(X_test_tensor, tf.float32)
     predictions_model = inference_func(input_1=X_test_tensor)['dense_3']
+    predictions_model_np = predictions_model.numpy()
     
     # ------------------------------------------------------------------------------------------
     # step4: format to write out
@@ -60,7 +61,7 @@ if __name__ == "__main__":
     df_SiteLevelPre = pd.DataFrame({"Chr":Chr_info,
                                     "PosC":Pos_info,
                                     "molecule_cov":molecule_depth_info,
-                                    "model_based":predictions_model.flatten(),
+                                    "model_based":predictions_model_np.flatten(),
                                     "count_based":predictions_count_trim,
                                     "Me":predictions_count_trim_me_count,
                                     "unMeth":predictions_count_trim_ume_count,
