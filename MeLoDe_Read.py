@@ -101,7 +101,7 @@ if __name__ == "__main__":
                     print("error! outputType should be ModBam or MoleculeLevel")
                     sys.exit()
         else:
-            print("--InBamStatu should be aligned or unaligned")
+            print("--InBamStatus should be aligned or unaligned")
             sys.exit()
     #
     if datatype == "SUBSEAD":
