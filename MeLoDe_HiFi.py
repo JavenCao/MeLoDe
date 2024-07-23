@@ -4,8 +4,9 @@ import numpy as np
 import pandas as pd
 from collections import defaultdict
 from numpy.lib.stride_tricks import sliding_window_view
-from MeLoDe_HiFi import *
 import tensorflow as tf
+from MeLoDe_HiFi import *
+
 
 #
 def get_args():
@@ -26,17 +27,25 @@ if __name__ == "__main__":
     minZMWdepth = int(args.minZMWdepth)
     R = int(args.windowRadius)
     outputfile = args.outputfile
+    
     # ------------------------------------------------------------------------------------------
-    # step1: model loading
-    loaded_model = tf.saved_model.load(args.modelDir)
+    # step1: model loading and get the function
+    loaded_model = tf.saved_model.load(args.modelDir, None)
+    inference_func = loaded_model.signatures["serving_default"]
+
     # ------------------------------------------------------------------------------------------
     # step2: read in read-level prediction
     ZMWprobDict_norm = {}
     ZMWprobDict_norm, predictions_count, molecule_depth = normZMWprediction_H(ZMWprefile_HiFi, minZMWdepth)
     X_test, X_ave_weights, ZMWprobDict_poslist_sorted = CreateDataMatrix_distance_testing(ZMWprobDict_norm, R)
+
     # ------------------------------------------------------------------------------------------
     # step3: do the prediction
-    predictions_model = loaded_model.predict(X_test)
+    X_test_tensor = tf.convert_to_tensor(X_test)
+    del(X_test)
+    X_test_tensor = tf.cast(X_test_tensor, tf.float32)
+    predictions_model = inference_func(input_1=X_test_tensor)['dense_3']
+
     # ------------------------------------------------------------------------------------------
     # step4: format to write out
     Chr_info = [x.split("_")[0] for x in ZMWprobDict_poslist_sorted]
