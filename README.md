@@ -30,33 +30,24 @@ Decode the mod.bam with MM/ML tag into read level prediction:
         MeLoDe_TagExtract --modbam Aligned_Sample_Name.5mc.mod.unaligned.bam \
                           --outfile Hpre.Read.level.meth.prob.txt.gz
         
-        MeLoDe_Site --Hpre Hpre.Read.level.meth.prob.txt.gz \
-                    --outfile HiFi.Site.5mC.fre
+        MeLoDe_Site_HiFi --Hpre Hpre.Read.level.meth.prob.txt.gz \
+                         --modelDir /path/to/JointCpG_model/HiFi \
+                         --outputfile test
 
-Output file of "HiFi.Site.5mC.fre" reports DNA 5mC frequency on CpG site.
+The tab-delimited output file of "test.JointCpG.MeLoDe-HiFi.txt.gz" reports DNA 5mC frequency on CpG sites in the following format:
 
-The tab-delimited file of "HiFi.Site.5mC.fre" is in the following format:
-
-        1. chrom: chromosome
-        2. pos: 1-based coordinate of the CpG on the reference genome
-        3. strand: +/-, the aligned strand of the read to the reference
-        4. depth: total read depths
+        1. Chr: chromosome
+        2. PosC: 1-based coordinate of the CpG on the reference genome
+        3. molecule_cov: total read/molecule depths
+        4. model_based: model-based prediction
         5. count_based: count-based prediction
-        6. model_based: model-based prediction
-
-
-
-
-
-
-
-
-
-
+        6. Me: methylated reads count
+        7. unMeth: unmethylated reads count
+        8. cisCpG_ave_weights: surroudning CpGs distance weights
 
 ## Workflow of MeLoDe in the low depth long reads sequencing design
 
-MeLoDe is developped to detect DNAm for low depth long reads sequencing data, which is a commonly used experimental strategy in population-scale study.
+MeLoDe is developped to detect DNAm for low depth LRS data, which is a commonly used experimental strategy in population-scale study.
 
 Taking PacBio platform as an example, below is the workflow to get 5mCpG prediction from such data.
 
@@ -76,33 +67,35 @@ Data required: long reads sequencing data with subreads and kinitic signals aval
 
 From HiFi reads data:
 
-        MeLoDe ReadPre --bamfile Aligned.hifi.bam \
-                       --datatype HIFI \
-                       --inputType aligned \
+        MeLoDe_ReadPre --bamfile Aligned.hifi.bam \
+                       --InBamStatus aligned \
+                       --readformat HIFI \
+                       --outputType "MoleculeLevel" \
                        --outprefix SampleID.HiFi \
-                       --ref Ref.fa \
-                       --motif "CG" \
-                       --outputType MoleculeLevel
-
-"SampleID.HiFi.SingleMol.pre.txt.gz" will be generated for CpG sites captured by each HiFi read.
+                       --HDir /path/to/ZMWmeth_HiFi_model \
+                       --Reference Ref.fa
+                       
+"SampleID.HiFi.SingleMol.pre.txt.gz" will be generated for CpG sites captured by HiFi read.
 
 From subreads data:
 
-        MeLoDe ReadPre --bamfile Aligned.subreads.bam \
-                       --datatype SUBREAD \
-                       --inputType aligned \
-                       --outprefix SampleID.Subreads \
-                       --ref Ref.fa \
-                       --motif "CG" \          
-                       --outputType MoleculeLevel
+        MeLoDe_ReadPre --bamfile Aligned.subreads.bam \
+                       --InBamStatus aligned \
+                       --readformat SUBREAD \
+                       --outputType "MoleculeLevel" \
+                       --outprefix SampleID.Subread \
+                       --CDir /path/to/ZMWmeth_ClosedZMW_model \
+                       --ODir /path/to/ZMWmeth_OpenZMW_model \                       
+                       --Reference Ref.fa
 
 Using subreads data as above, "SampleID.Subread.SingleMol.pre.txt.gz" will be generated for CpG sites captured by each single molecule.
 
 **Step4:** Usage of HiFi reads and non-HiFi subreads to estimate CpG site-level DNAm frequency:
 
-        MeLoDe SitePre --Hpre SampleID.HiFi.SingleMol.pre.txt.gz \
-                       --Spre SampleID.Subread.SingleMol.pre.txt.gz \
-                       --outfile SampleID.low_depth.CpG.pre.txt.gz
+        MeLoDe_SitePre_Combo --HiFiZMWpre SampleID.HiFi.SingleMol.pre.txt.gz \
+                             --SubreadsZMWpre SampleID.Subread.SingleMol.pre.txt.gz \
+                             --modelDir /path/to/JointCpG_model/Combo \
+                             --outputfile SampleID.low_depth
 
 This step comprehensively uses molecules of HiFi-reads, nonHiFi-ClosedZMW, nonHiFi-OpenZMW to give the final prediction on CpG site level.
 
