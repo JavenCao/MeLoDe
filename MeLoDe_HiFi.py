@@ -128,7 +128,7 @@ def get_normalized_histo(probs):
 #
 def CreateDataMatrix_distance_testing(ZMWprobDict_norm, R):
     """
-    Modified 2024-07-13
+    Modified 2024-07-13,2024-07-23
     Freeze 2024-01-19:
         Input: ZMWprobDict_norm = [ [ HiFi reads ] [count_based_DNAm_freq] ]
         Return:
@@ -168,7 +168,7 @@ def CreateDataMatrix_distance_testing(ZMWprobDict_norm, R):
     #
     M = featuresWindow.shape[1]# 11 feature
    # 12 = HiFi_norm(10) + Count_based_prediction(1) + distance_weights(1)
-    featuresWindow_merge = np.random.random((N, (2*R+1), (M+1)))##(539549, 11=2*R+1, 12),R=5
+    featuresWindow_merge = np.random.random((N, (M+1),(2*R+1)))##(539549, 12, 11=2*R+1),R=5
     #
     for i in range(0,N):
         a = np.array(centered_distances[i])#len = 11 = 2R+1
