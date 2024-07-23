@@ -55,7 +55,7 @@ if __name__ == "__main__":
     #
     predictions_count_trim = [predictions_count[x][0] for x in ZMWprobDict_poslist_sorted]
     predictions_count_trim_me_count = [predictions_count[x][1] for x in ZMWprobDict_poslist_sorted]
-    predictions_count_trim_ume_count = [predictions_count[x[2]] for x in ZMWprobDict_poslist_sorted]
+    predictions_count_trim_ume_count = [predictions_count[x][2] for x in ZMWprobDict_poslist_sorted]
     #
     df_SiteLevelPre = pd.DataFrame({"Chr":Chr_info,
                                     "PosC":Pos_info,
