@@ -73,7 +73,7 @@ if __name__ == "__main__":
                 TOP_HiFiReadsFeature(Topbam=bamf, outfile=outfile, minsubdep=minsubdep, maxsubdep=maxsubdep, R=R, scaleFlag=scaleFlag)
             if outputType == "ModBam":
                 if args.HDir:
-                    loaded_model = tf.saved_model.load(args.HDir)
+                    loaded_model = tf.saved_model.load(args.HDir, None)
                     outputfile = outputp + ".5mc.mod.unaligned.bam"
                     TOP_HiFiReadsMeth(Topbam=bamf, modTopbam=outputfile, minsubdep=minsubdep, maxsubdep=maxsubdep, R=R, scaleFlag=scaleFlag, KiFlag=KiFlag, loaded_model=loaded_model)
                 else:
@@ -91,7 +91,7 @@ if __name__ == "__main__":
             else:
                 if outputType == "ModBam" or outputType == "MoleculeLevel":
                     if args.HDir and args.Reference:
-                        loaded_model = tf.saved_model.load(args.HDir)
+                        loaded_model = tf.saved_model.load(args.HDir, None)
                         cglist = Buildcglist_dict_Seq(args.Reference)
                         Aligned_HiFiReadsMeth(bamf, cglist, outputp, outputType, minsubdep, maxsubdep, mappingQ, R, scaleFlag, KiFlag, loaded_model)
                     else:
@@ -117,9 +117,9 @@ if __name__ == "__main__":
             if outputType == "MoleculeLevel":
                 if args.CDir and args.ODir:
                     # load closedZMW model
-                    closedZMW_subreads_model = tf.saved_model.load(args.CDir)
+                    closedZMW_subreads_model = tf.saved_model.load(args.CDir, None)
                     # load openZMW model
-                    openZMW_subreads_model = tf.saved_model.load(args.ODir)
+                    openZMW_subreads_model = tf.saved_model.load(args.ODir, None)
                     #
                     Aligned_subreadsBam_Meth(bamf, cglist, outputp, outputType, mappingQ, R, scaleFlag,closedZMW_subreads_model, openZMW_subreads_model)
                 else:
@@ -673,10 +673,17 @@ def str_complementary(string_a):
     return complementary_string_a
 #
 def read_Meth_prediction(X_reads, loaded_model):
-    """Freeze,2024-01-04"""
+    """
+    Modified,2024-07-23,notes: the golang version should be correct, no update is needed
+    Freeze,2024-01-04
+    """
     X_testing = np.transpose(X_reads, (0, 2, 1))
-    predictions = loaded_model.predict(X_testing,batch_size=10)
-    predictions_list = predictions.flatten()
+    X_test_tensor = tf.convert_to_tensor(X_testing)
+    X_test_tensor = tf.cast(X_test_tensor, tf.float32)
+    inference_func = loaded_model.signatures["serving_default"]
+    predictions = inference_func(input_1=X_test_tensor)
+    key = list(predictions)[0]
+    predictions_list = predictions[key].flatten()
     return predictions_list
 #
 #
