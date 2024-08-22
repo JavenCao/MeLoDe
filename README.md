@@ -53,7 +53,7 @@ From subreads data:
                              --modelDir /path/to/JointCpG_model/Combo \
                              --outputfile Site-level-5mCpG.fre.txt.gz
 
-This step jointly use HiFi-reads and non-HiFi molecules to calculate the CpG site-level DNA methylation frequency prediction.
+This step jointly use HiFi-reads and non-HiFi molecules (automatically extracted from SubreadsZMWpre) to calculate the CpG site-level DNA methylation frequency prediction.
 
 The tab-delimited output file is in the following format:
 
