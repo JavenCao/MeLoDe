@@ -22,9 +22,9 @@ def get_args():
     parser.add_argument("-oe", "--outputType", required=True, help = "Output Types: ModBam,Feature,MoleculeLevel. ModBam: Bam file with MM/ML tags. | Feature: Feature matrix. | MoleculeLevel: Molecule level modification prediction")
     parser.add_argument("-o", "--outprefix", required=True, help = "[*outprefix*].modification.bam for ModBam outputType.  [*outprefix*].Kmat.txt.gz for Feature outputType. [*outprefix*].SingleMol_5mCpG.txt.gz for MoleculeLevel outputType")
     # ZMWmeth model files
-    parser.add_argument("-H","--HDir", required=True, help="ZMWmeth-HiFi model directory")
-    parser.add_argument("-C","--CDir", required=True, help="ZMWmeth-ClosedZMW model directory")
-    parser.add_argument("-O","--ODir", required=True, help="ZMWmeth-OpenZMW model directory")
+    parser.add_argument("-H","--HDir", required=False, help="ZMWmeth-HiFi model directory")
+    parser.add_argument("-C","--CDir", required=False, help="ZMWmeth-ClosedZMW model directory")
+    parser.add_argument("-O","--ODir", required=False, help="ZMWmeth-OpenZMW model directory")
     # control parameters
     parser.add_argument("-keepK","--KeepKinetics", required=False, default="remove", help="remove or keep. flag to indicate keep or remove the kinetic sigals in the output Bam file")
     parser.add_argument("-r", "--radius", required=False, default='10',type=int, help="CpG +/- r base pairs will be included in the read-level prediction")
