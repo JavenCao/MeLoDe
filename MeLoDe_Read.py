@@ -1299,7 +1299,7 @@ def Con_posSEQ_to_posRead(read_is_reverse, read_length, pos_on_SEQ_dict):
 #
 def Buildcglist_dict_Seq(infasta):
     """
-    Freeze 2024-07-10:
+    Freeze 2024-08-22:
     Get the 'CG' 1-based position on the reference genome
     """
     cglist_dict = defaultdict(list)
@@ -1312,7 +1312,8 @@ def Buildcglist_dict_Seq(infasta):
             cglist_dict[chr_name] = position_list
     # Sort values numerically based on div[1]
     for chromosome in cglist_dict:
-        cglist_dict[chromosome] = sorted(cglist_dict[chromosome], key=lambda x: int(x.split("_")[1]))
+        if chromosome in ['chr' + str(i) for i in range(1, 23)]:
+            cglist_dict[chromosome] = sorted(cglist_dict[chromosome], key=lambda x: int(x.split("_")[1]))
     return cglist_dict
 #
 #
