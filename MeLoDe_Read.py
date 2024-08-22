@@ -19,14 +19,14 @@ def get_args():
     parser.add_argument("-bam", "--bamfile", required=True, help="aligned/unaligned BAM file with kinetic signals, fi/fp/ri/rp for hifi reads, and ip/pw for subreads")
     parser.add_argument("-bamstatus", "--InBamStatus",required=True, help="aligned or unaligned")
     parser.add_argument("-format","--readformat",required=True, help="read type, SUBREAD or HIFI")
-    parser.add_argument("-oe", "--outputType", required=True, help = "Output Types: ModBam,Feature,MoleculeLevel. ModBam: Modification Bam file. | Feature: Feature matrix. | MoleculeLevel: Molecule level modification prediction")
-    parser.add_argument("-o", "--outprefix", required=True, help = "[*outprefix*].modification.bam for ModBam outputType.  [*outprefix*].Kmat.txt.gz for Feature outputType. [*outprefix*].SingleMol.pre.txt.gz for MoleculeLevel outputType")
-    parser.add_argument("-keepK","--KeepKinetics", required=True, default="remove", help="remove or keep. flag to indicate keep or remove the kinetic sigals in the output Bam file")
+    parser.add_argument("-oe", "--outputType", required=True, help = "Output Types: ModBam,Feature,MoleculeLevel. ModBam: Bam file with MM/ML tags. | Feature: Feature matrix. | MoleculeLevel: Molecule level modification prediction")
+    parser.add_argument("-o", "--outprefix", required=True, help = "[*outprefix*].modification.bam for ModBam outputType.  [*outprefix*].Kmat.txt.gz for Feature outputType. [*outprefix*].SingleMol_5mCpG.txt.gz for MoleculeLevel outputType")
     # ZMWmeth model files
-    parser.add_argument("-H","--HDir", required=False, help="ZMWmeth-HiFi model directory")
-    parser.add_argument("-C","--CDir", required=False, help="ZMWmeth-ClosedZMW model directory")
-    parser.add_argument("-O","--ODir", required=False, help="ZMWmeth-OpenZMW model directory")
+    parser.add_argument("-H","--HDir", required=True, help="ZMWmeth-HiFi model directory")
+    parser.add_argument("-C","--CDir", required=True, help="ZMWmeth-ClosedZMW model directory")
+    parser.add_argument("-O","--ODir", required=True, help="ZMWmeth-OpenZMW model directory")
     # control parameters
+    parser.add_argument("-keepK","--KeepKinetics", required=False, default="remove", help="remove or keep. flag to indicate keep or remove the kinetic sigals in the output Bam file")
     parser.add_argument("-r", "--radius", required=False, default='10',type=int, help="CpG +/- r base pairs will be included in the read-level prediction")
     parser.add_argument("-min", "--minsubreadsdepth", required=False, default='1', type=int, help="min subreads depth for a ZMW to be included")
     parser.add_argument("-max", "--maxsubreadsdepth", required=False, default='60', type=int, help="max subreads depth for a ZMW to be included")
@@ -48,7 +48,6 @@ if __name__ == "__main__":
     datatype = args.readformat
     outputType = args.outputType
     outputp = args.outprefix
-    KiFlag = args.KeepKinetics
     #
     #
     if args.radius:
@@ -65,6 +64,8 @@ if __name__ == "__main__":
         proc = int(args.Processor)
     if args.Scale:
         scaleFlag = args.Scale
+    if args.KeepKinetics:
+        KiFlag = args.KeepKinetics
     #
     if datatype == "HIFI":
         if inputType == "unaligned":
@@ -86,7 +87,7 @@ if __name__ == "__main__":
                     outfile = outputp + ".Kmat.txt.gz"
                     Aligned_HiFiReadsFeature(bamf, cglist, outfile, minsubdep, maxsubdep, mappingQ, R, scaleFlag)
                 else:
-                    print("error! Please input --Reference file used for the alined bam file you provided")
+                    print("error! Please input --Reference file used for the aligned bam file you provided")
                     sys.exit()
             else:
                 if outputType == "ModBam" or outputType == "MoleculeLevel":
@@ -121,12 +122,12 @@ if __name__ == "__main__":
                     # load openZMW model
                     openZMW_subreads_model = tf.saved_model.load(args.ODir, None)
                     #
-                    Aligned_subreadsBam_Meth(bamf, cglist, outputp, outputType, mappingQ, R, scaleFlag,closedZMW_subreads_model, openZMW_subreads_model)
+                    Aligned_subreadsBam_Meth(bamf, cglist, outputp, outputType, mappingQ, R, scaleFlag, closedZMW_subreads_model, openZMW_subreads_model)
                 else:
                     print("error! Please input ZMWmeth models for closedZMW(--CDir) and openZMW(--ODir)")
                     sys.exit()
         else:
-            print("error! Subreads data should be alined to the reference genome")
+            print("error! Subreads data should be aligned to the reference genome")
             sys.exit()
 else:
     pass
