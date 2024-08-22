@@ -7,7 +7,7 @@ from numpy.lib.stride_tricks import sliding_window_view
 import tensorflow as tf
 from MeLoDe_Combo import *
 
-#
+# test
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("-hifizmw", "--HiFiZMWpre", required=True, help="HiFi reads - single molecule level prediction. File format: txt.gz")
