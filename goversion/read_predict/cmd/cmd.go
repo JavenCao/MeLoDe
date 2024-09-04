@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"flag"
 	"fmt"
+	"github.com/Taichidasheen/read_predict/pkg/fasta"
 	"github.com/Taichidasheen/read_predict/pkg/opt"
 	"github.com/Taichidasheen/read_predict/pkg/pool"
 	"github.com/Taichidasheen/read_predict/pkg/subread"
@@ -35,14 +36,11 @@ func main() {
 	var maxSubreadsDepth int
 	var radius int
 	var mappingQuality int
-	var baseQuality int
 	var chromosome string
 	var processor int
 	var scale bool
 	var datatype string
-	var modelJson string
-	var modelWeights string
-	var modelDir string
+	var hifiModelDir string
 	var closedModelDir string
 	var openModelDir string
 
@@ -53,32 +51,55 @@ func main() {
 	var cpuprofile string
 	var topN int
 
-	//input related parameters
-	flag.StringVar(&inType, "inType", "", "aligned or unaligned")
-	flag.StringVar(&bamFilePath, "bam", "", "aligned/unaligned BAM file with kinetic signals, fi/fp/ri/rp for hifi reads, and ip/pw for subreads")
-	flag.StringVar(&cpgBed, "cg", "", "CpG position, column1 is chr, column2 is pos, such as chr1 132. Here pos is 1-based coordinate on Rreference's forward strand")
-	flag.StringVar(&datatype, "type", "SUBREAD", "data mode, SUBREAD or HIFI")
-	flag.IntVar(&radius, "r", 10, "cpg +/- r")
-	flag.IntVar(&minSubreadsDepth, "min", 1, "min subreads depth (by-strand) for a ZMW to be included")
-	flag.IntVar(&maxSubreadsDepth, "max", 60, "max subreads depth (by-strand) for a ZMW to be excluded")
-	flag.IntVar(&mappingQuality, "maq", 30, "min subreads mapping quality from aligner")
-	flag.IntVar(&baseQuality, "bpq", 0, "min base quality required")
-	flag.StringVar(&chromosome, "chr", "whole_genome", "processing chromosome")
-	flag.StringVar(&modelJson, "j", "", "json file of the model, json file")
-	flag.StringVar(&modelWeights, "w", "", "weights of the model, h5 file")
-	flag.StringVar(&modelDir, "model", "", "model dir")
-	flag.StringVar(&closedModelDir, "cmodel", "", "closed model dir")
-	flag.StringVar(&openModelDir, "omodel", "", "open model dir")
+	//input parameters
+	flag.StringVar(&bamFilePath, "bamfile", "", "aligned/unaligned BAM file with kinetic signals, fi/fp/ri/rp for hifi reads, and ip/pw for subreads")
+	flag.StringVar(&inType, "InBamStatus", "", "aligned or unaligned")
+	flag.StringVar(&datatype, "readformat", "HIFI", "read type, SUBREAD or HIFI")
+	flag.StringVar(&outputType, "outputType", "", "Output Types: ModBam,Feature,MoleculeLevel. ModBam: Modification Bam file. | Feature: Feature matrix. | MoleculeLevel: Molecule level modification prediction")
+	flag.StringVar(&outPrefix, "outprefix", "", "[*outprefix*].modification.bam for ModBam outputType.  "+
+		"[*outprefix*].Kmat.txt.gz for Feature outputType. [*outprefix*].SingleMol.pre.txt.gz for MoleculeLevel outputType")
+	flag.StringVar(&keepK, "KeepKinetics", "remove", "remove or keep. flag to indicate keep or remove the kinetic signals in the output Bam file")
+
+	//ZMWmeth model files
+	flag.StringVar(&hifiModelDir, "HDir", "", "ZMWmeth-HiFi model directory")
+	flag.StringVar(&closedModelDir, "CDir", "", "ZMWmeth-ClosedZMW model directory")
+	flag.StringVar(&openModelDir, "ODir", "", "ZMWmeth-OpenZMW model directory")
+
+	//control parameters
+	flag.IntVar(&radius, "radius", 10, "cpg +/- r base pairs will be included in the read-level prediction")
+	flag.IntVar(&minSubreadsDepth, "minsubreadsdepth", 1, "min subreads depth for a ZMW to be included")
+	flag.IntVar(&maxSubreadsDepth, "maxsubreadsdepth", 60, "max subreads depth for a ZMW to be excluded")
+	flag.IntVar(&mappingQuality, "MappingQuality", 30, "min mapping quality for a read to be included")
+	flag.StringVar(&cpgBed, "Reference", "", "The reference genome in fasta format when the input is an aligned bam")
+	flag.StringVar(&chromosome, "Chromosome", "whole_genome", "processing chromosome")
+	flag.BoolVar(&scale, "Scale", false, "flag to indicate scale the signal of each subreads, (x-mean)/std. Without this tag is raw signal value")
+
+	/*
+		//input related parameters
+		flag.StringVar(&inType, "inType", "", "aligned or unaligned")
+		flag.StringVar(&bamFilePath, "bam", "", "aligned/unaligned BAM file with kinetic signals, fi/fp/ri/rp for hifi reads, and ip/pw for subreads")
+		flag.StringVar(&cpgBed, "cg", "", "CpG position, column1 is chr, column2 is pos, such as chr1 132. Here pos is 1-based coordinate on Rreference's forward strand")
+		flag.StringVar(&datatype, "type", "SUBREAD", "data mode, SUBREAD or HIFI")
+		flag.IntVar(&radius, "r", 10, "cpg +/- r")
+		flag.IntVar(&minSubreadsDepth, "min", 1, "min subreads depth (by-strand) for a ZMW to be included")
+		flag.IntVar(&maxSubreadsDepth, "max", 60, "max subreads depth (by-strand) for a ZMW to be excluded")
+		flag.IntVar(&mappingQuality, "maq", 30, "min subreads mapping quality from aligner")
+		flag.IntVar(&baseQuality, "bpq", 0, "min base quality required")
+		flag.StringVar(&chromosome, "chr", "whole_genome", "processing chromosome")
+		flag.StringVar(&modelDir, "model", "", "model dir")
+		flag.StringVar(&closedModelDir, "cmodel", "", "closed model dir")
+		flag.StringVar(&openModelDir, "omodel", "", "open model dir")
+
+		// output related parameters
+		flag.StringVar(&outPrefix, "o", "", "[*outprefix*].modification.bam for ModBam outputType.  "+
+			"[*outprefix*].Kmat.txt.gz for Feature outputType. [*outprefix*].SingleMol.pre.txt.gz for MoleculeLevel outputType")
+		flag.BoolVar(&scale, "sc", false, "flag to indicate scale the signal of each subreads, (x-mean)/std. Without this tag is raw signal value")
+		flag.StringVar(&outputType, "oe", "", "Output Types: ModBam,Feature,MoleculeLevel. ModBam: Modification Bam file. | Feature: Feature matrix. | MoleculeLevel: Molecule level modification prediction")
+		flag.StringVar(&keepK, "keepK", "remove", "remove or keep. flag to indicate keep or remove the kinetic signals in the output Bam file")
+	*/
 
 	// processing parameters
-	flag.IntVar(&processor, "p", 0, "Parallelism processors")
-
-	// output related parameters
-	flag.StringVar(&outPrefix, "o", "", "[*outprefix*].modification.bam for ModBam outputType.  "+
-		"[*outprefix*].Kmat.txt.gz for Feature outputType. [*outprefix*].SingleMol.pre.txt.gz for MoleculeLevel outputType")
-	flag.BoolVar(&scale, "sc", false, "flag to indicate scale the signal of each subreads, (x-mean)/std. Without this tag is raw signal value")
-	flag.StringVar(&outputType, "oe", "", "Output Types: ModBam,Feature,MoleculeLevel. ModBam: Modification Bam file. | Feature: Feature matrix. | MoleculeLevel: Molecule level modification prediction")
-	flag.StringVar(&keepK, "keepK", "remove", "remove or keep. flag to indicate keep or remove the kinetic signals in the output Bam file")
+	flag.IntVar(&processor, "Processor", 0, "Parallelism processors")
 
 	//debug parameters
 	flag.StringVar(&cpuprofile, "cpuprofile", "", "write cpu profile to this file")
@@ -86,25 +107,55 @@ func main() {
 
 	flag.Parse()
 
-	fmt.Println("inType:", inType)
-	fmt.Println("bamFilePath:", bamFilePath)
-	fmt.Println("cpgBed:", cpgBed)
-	fmt.Println("minSubreadsDepth:", minSubreadsDepth)
-	fmt.Println("maxSubreadsDepth:", maxSubreadsDepth)
-	fmt.Println("radius:", radius)
-	fmt.Println("mappingQuality:", mappingQuality)
-	fmt.Println("baseQuality:", baseQuality)
-	fmt.Println("chromosome:", chromosome)
-	fmt.Println("processor:", processor)
-	fmt.Println("datatype:", datatype)
-	fmt.Println("modelDir:", modelDir)
-	fmt.Println("closedModelDir:", closedModelDir)
-	fmt.Println("openModelDir:", openModelDir)
+	/*
+		fmt.Println("inType:", inType)
+		fmt.Println("bamFilePath:", bamFilePath)
+		fmt.Println("cpgBed:", cpgBed)
+		fmt.Println("minSubreadsDepth:", minSubreadsDepth)
+		fmt.Println("maxSubreadsDepth:", maxSubreadsDepth)
+		fmt.Println("radius:", radius)
+		fmt.Println("mappingQuality:", mappingQuality)
+		fmt.Println("baseQuality:", baseQuality)
+		fmt.Println("chromosome:", chromosome)
+		fmt.Println("processor:", processor)
+		fmt.Println("datatype:", datatype)
+		fmt.Println("modelDir:", modelDir)
+		fmt.Println("closedModelDir:", closedModelDir)
+		fmt.Println("openModelDir:", openModelDir)
 
-	fmt.Println("outPrefix:", outPrefix)
-	fmt.Println("scale:", scale)
+		fmt.Println("outPrefix:", outPrefix)
+		fmt.Println("scale:", scale)
+		fmt.Println("outputType:", outputType)
+		fmt.Println("keepK:", keepK)
+
+		fmt.Println("cpuprofile:", cpuprofile)
+		fmt.Println("topN:", topN)
+
+		fmt.Println("maxProcs:", runtime.GOMAXPROCS(0))
+
+	*/
+	//input parameters
+	fmt.Println("bamfile:", bamFilePath)
+	fmt.Println("InBamStatus:", inType)
+	fmt.Println("readformat:", datatype)
 	fmt.Println("outputType:", outputType)
-	fmt.Println("keepK:", keepK)
+	fmt.Println("outprefix:", outPrefix)
+	fmt.Println("KeepKinetics:", keepK)
+
+	//ZMWmeth model files
+	fmt.Println("HDir:", hifiModelDir)
+	fmt.Println("CDir:", closedModelDir)
+	fmt.Println("ODir:", openModelDir)
+
+	//control parameters
+	fmt.Println("radius:", radius)
+	fmt.Println("minsubreadsdepth:", minSubreadsDepth)
+	fmt.Println("maxsubreadsdepth:", maxSubreadsDepth)
+	fmt.Println("MappingQuality:", mappingQuality)
+	fmt.Println("Processor:", processor)
+	fmt.Println("Reference:", cpgBed)
+	fmt.Println("Scale:", scale)
+	fmt.Println("Chromosome:", chromosome)
 
 	fmt.Println("cpuprofile:", cpuprofile)
 	fmt.Println("topN:", topN)
@@ -159,9 +210,9 @@ func main() {
 			if outputType == "MoleculeLevel" {
 				taskName = datatype + "_" + inType + "_" + outputType
 
-				model, err := loadModel(modelDir, []string{"serve"})
+				model, err := loadModel(hifiModelDir, []string{"serve"})
 				if err != nil {
-					log.Printf("loadModel err:%v, modelDir:%s", err, modelDir)
+					log.Printf("loadModel err:%v, modelDir:%s", err, hifiModelDir)
 				}
 				log.Printf("loaded model:%v", model)
 
@@ -213,7 +264,8 @@ func main() {
 			if outputType == "Feature" {
 				taskName = datatype + "_" + inType + "_" + outputType
 				//load cgList
-				cgListMap, err := buildCgListMap(cpgBed, chromosome)
+				//cgListMap, err := buildCgListMap(cpgBed, chromosome)
+				cgListMap, err := buildCgListMapFromFasta(cpgBed, chromosome)
 				if err != nil {
 					log.Fatalf("buildCgListMap err:%v", err)
 					return
@@ -237,6 +289,71 @@ func main() {
 				//bamHeader := bamReader.Header()
 				//go writeBamRecord(&wg, bamHeader, outPrefix, predictResultChan)
 			}
+			if outputType == "MoleculeLevel" || outputType == "ModBam" {
+				taskName = datatype + "_" + inType + "_" + outputType
+
+				//load cgList
+				//cgListMap, err := buildCgListMap(cpgBed, chromosome)
+				cgListMap, err := buildCgListMapFromFasta(cpgBed, chromosome)
+				if err != nil {
+					log.Fatalf("buildCgListMap err:%v", err)
+					return
+				}
+				log.Println("len(cgListMap):", len(cgListMap))
+
+				model, err := loadModel(hifiModelDir, []string{"serve"})
+				if err != nil {
+					log.Printf("loadModel err:%v, modelDir:%s", err, hifiModelDir)
+				}
+				log.Printf("loaded model:%v", model)
+
+				bamFile, err := os.Open(bamFilePath)
+				if err != nil {
+					log.Fatalf("could not open file %q:", err)
+					return
+				}
+				defer bamFile.Close()
+				ok, err := bgzf.HasEOF(bamFile)
+				if err != nil {
+					log.Fatalf("could not open file %q:", err)
+					return
+				}
+				if !ok {
+					log.Printf("file has no bgzf magic block: may be truncated")
+					return
+				}
+				//读写并发度
+				concurrency := 5
+				//bam reader
+				bamReader, err := bam.NewReader(bamFile, concurrency)
+				if err != nil {
+					log.Fatalf("could not read bam:%v", err)
+					return
+				}
+				defer bamReader.Close()
+
+				wg.Add(3)
+				recordChan := make(chan *sam.Record, 1000)
+
+				predictTextResultChan := make(chan string, 3000)
+				predictBamResultChan := make(chan *sam.Record, 1000)
+
+				//读取bam文件
+				//go readBam(&wg, recordChan, bamFilePath, topN)
+				go readHiFiBam(&wg, recordChan, bamReader, topN)
+				//异步处理record
+				go processAlignedHiFiPredict(&wg, cgListMap, model, recordChan, predictTextResultChan, predictBamResultChan, opts)
+
+				//resultPath := "/storage/yangjianLab/westlakechat/subreads_locate/result.txt"
+				//异步写入result
+				if outputType == "MoleculeLevel" {
+					go writeTextResult(&wg, outPrefix, predictTextResultChan)
+				}
+				if outputType == "ModBam" {
+					bamHeader := bamReader.Header()
+					go writeBamRecord(&wg, bamHeader, outPrefix, predictBamResultChan)
+				}
+			}
 		}
 	}
 
@@ -244,7 +361,8 @@ func main() {
 		if outputType == "Feature" {
 			taskName = datatype + "_" + inType + "_" + outputType
 			//load cgList
-			cgListMap, err := buildCgListMap(cpgBed, chromosome)
+			//cgListMap, err := buildCgListMap(cpgBed, chromosome)
+			cgListMap, err := buildCgListMapFromFasta(cpgBed, chromosome)
 			if err != nil {
 				log.Fatalf("buildCgListMap err:%v", err)
 				return
@@ -305,7 +423,8 @@ func main() {
 		if outputType == "MoleculeLevel" {
 			taskName = datatype + "_" + inType + "_" + outputType
 			//load cgList
-			cgListMap, err := buildCgListMap(cpgBed, chromosome)
+			//cgListMap, err := buildCgListMap(cpgBed, chromosome)
+			cgListMap, err := buildCgListMapFromFasta(cpgBed, chromosome)
 			if err != nil {
 				log.Fatalf("buildCgListMap err:%v", err)
 				return
@@ -455,6 +574,32 @@ func buildCgListMap(cgFile string, processingChr string) (map[string][]int, erro
 	//sort
 	for chr, _ := range cgListMap {
 		sort.Ints(cgListMap[chr])
+	}
+	return cgListMap, nil
+}
+
+func buildCgListMapFromFasta(cgFile string, processingChr string) (map[string][]int, error) {
+	start := time.Now()
+	defer func() {
+		log.Println("buildCgListMapFromFasta cost:", time.Since(start))
+	}()
+
+	cgListMap := make(map[string][]int)
+
+	records, err := fasta.ReadFASTA(cgFile)
+	if err != nil {
+		log.Printf("fasta.ReadFASTA err:%+v", err)
+		return nil, err
+	}
+
+	for _, record := range records {
+		chr := record.Chromosome
+		if processingChr == "whole_genome" || chr == processingChr {
+			// 查找 "CG" 出现的位置
+			cgPositions := record.FindCGPositions()
+			//fmt.Println("CG Positions:", cgPositions[:50])
+			cgListMap[chr] = cgPositions
+		}
 	}
 	return cgListMap, nil
 }
@@ -639,6 +784,23 @@ func processAlignedHiFiFeature(wg *sync.WaitGroup, cgListMap map[string][]int, r
 	pool.Shutdown()
 	//记得close resultChan, 否则会deadlock
 	close(resultChan)
+}
+
+func processAlignedHiFiPredict(wg *sync.WaitGroup, cgListMap map[string][]int, model *tf.SavedModel, recordChan chan *sam.Record,
+	textResultChan chan string, bamResultChan chan *sam.Record, opts opt.Options) {
+	defer wg.Done()
+
+	concurrency := opts.Processor
+
+	pool := pool.New(concurrency)
+	for record := range recordChan {
+		w := worker.NewAlignedHiFiPredictWorker(model, record, cgListMap, textResultChan, bamResultChan, opts)
+		pool.Run(&w)
+	}
+	pool.Shutdown()
+	//记得close resultChan, 否则会deadlock
+	close(textResultChan)
+	close(bamResultChan)
 }
 
 func processTopHiFiFeature(wg *sync.WaitGroup, recordChan chan *sam.Record, resultChan chan string, opts opt.Options) {
