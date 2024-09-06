@@ -67,9 +67,8 @@ The tab-delimited output file is in the following format:
         8. cisCpG_ave_weights: surroudning CpGs distance weights
 
 
-## Quick start:
-Using HiFi reads, we demonstrate how to use MeLoDe.
-Be in mind that MeLoDe can be run on subreads, as well.
+## MeLoDe on HiFi reads
+If you only have HiFi reads (say, from Revio platform), MeLoDe is compatible with HiFi reads.
 
 **Step1: read-level 5mC identification**
 
@@ -79,8 +78,7 @@ From **unaligned HiFi reads**:
                     --InBamStatus unaligned \
                     --readformat HIFI \
                     --outputType ModBam \
-                    --outprefix Sample_Name \
-                    --KeepKinetics keep
+                    --outprefix Sample_Name
 
 "Sample_Name.5mc.mod.unaligned.bam" will be generated, in which the MM/ML tag is created, tagging the positions and 5mC probabilities of CpGs on reads.
 Adding "--KeepKinetics keep" will keep the fi/fp/ri/rp tags, otherwise removed.
@@ -91,25 +89,16 @@ Next, align the 5mC tagged ModBam above to the reference genome using pbmm2:
 
 **Step2: CpG site-level 5mC frequency estimation**
 
-Decode the mod.bam with MM/ML tag into read level prediction:
+Decode the mod.bam with MM/ML tag into read-level prediction:
 
         MeLoDe_TagExtract --modbam Aligned_Sample_Name.5mc.mod.unaligned.bam \
                           --outfile Hpre.Read.level.meth.prob.txt.gz
         
         MeLoDe_Site_HiFi --Hpre Hpre.Read.level.meth.prob.txt.gz \
                          --modelDir /path/to/JointCpG_model/HiFi \
-                         --outputfile test
+                         --outputfile Sample_Name
 
-The tab-delimited output file of "test.JointCpG.MeLoDe-HiFi.txt.gz" reports DNA 5mC frequency on CpG sites in the following format:
-
-        1. Chr: chromosome
-        2. PosC: 1-based coordinate of the CpG on the reference genome
-        3. molecule_cov: total read/molecule depths
-        4. model_based: model-based prediction
-        5. count_based: count-based prediction
-        6. Me: methylated reads count
-        7. unMeth: unmethylated reads count
-        8. cisCpG_ave_weights: surroudning CpGs distance weights
+The tab-delimited output file of "Sample_Name.JointCpG.MeLoDe-HiFi.txt.gz" reports DNA 5mC frequency on CpG sites in the format that is the same as above.
 
 ## (Advanced) Train your own models
 
