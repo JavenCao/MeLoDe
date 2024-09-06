@@ -31,7 +31,7 @@ def get_args():
     parser.add_argument("-min", "--minsubreadsdepth", required=False, default='1', type=int, help="min subreads depth for a ZMW to be included")
     parser.add_argument("-max", "--maxsubreadsdepth", required=False, default='60', type=int, help="max subreads depth for a ZMW to be included")
     parser.add_argument("-maq", "--MappingQuality", required=False, default='30', type=int, help="min mapping quality for a read to be included")
-    parser.add_argument("-p", "--Processor", required=False, type=int,help="Parallelism processors")
+    parser.add_argument("-p", "--Processor", required=False, default=1, type=int,help="Parallelism processors")
     parser.add_argument("-ref","--Reference", required=False, help="The reference genome in fasta format when the input is an aligned bam")
     parser.add_argument("-sc", "--Scale", required=False, action='store_true',default=False, help="flag to indicate scale the signal of each subreads, (x-mean)/std. Without this tag is raw signal value")
     parser.add_argument("-chr", "--Chromosome", required=False, default="whole_genome", help="processing chromosome")
@@ -50,22 +50,14 @@ if __name__ == "__main__":
     outputp = args.outprefix
     #
     #
-    if args.radius:
-        R = int(args.radius)
-    if args.minsubreadsdepth:
-        minsubdep = int(args.minsubreadsdepth)
-    if args.maxsubreadsdepth:
-        maxsubdep = int(args.maxsubreadsdepth)
-    if args.MappingQuality:
-        mappingQ = int(args.MappingQuality)
-    if args.Chromosome:
-        processingChr = args.Chromosome
-    if args.Processor:
-        proc = int(args.Processor)
-    if args.Scale:
-        scaleFlag = args.Scale
-    if args.KeepKinetics:
-        KiFlag = args.KeepKinetics
+    KiFlag = args.KeepKinetics
+    R = int(args.radius)
+    minsubdep = int(args.minsubreadsdepth)
+    maxsubdep = int(args.maxsubreadsdepth)
+    mappingQ = int(args.MappingQuality)
+    proc = int(args.Processor)
+    scaleFlag = args.Scale
+    processingChr = args.Chromosome
     #
     if datatype == "HIFI":
         if inputType == "unaligned":
