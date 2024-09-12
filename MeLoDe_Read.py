@@ -191,6 +191,7 @@ def TOP_HiFiReadsFeature(Topbam, outfile, minsubdep, maxsubdep, R, scaleFlag):
 #
 def TOP_HiFiReadsMeth(Topbam, modTopbam, minsubdep, maxsubdep, R, scaleFlag, KiFlag, loaded_model):
     """
+    Bug_fix:2024-09-12, including all the reads
     Freeze with bug for ML tag,2024-01-04
         INPUT: Topbam: the original unaligned HiFi Bam file with fi/fp/ri/rp signals
         OUTPUT: modTopbam: modification called bam file tagged by MM,ML. And the fi/fp/ri/rp signals can be kept or removed according to KiFlag.
@@ -265,6 +266,46 @@ def TOP_HiFiReadsMeth(Topbam, modTopbam, minsubdep, maxsubdep, R, scaleFlag, KiF
                     for processed_read in output_reads:
                         outsamfile.write(processed_read)
                     output_reads.clear()
+            
+            # ------------------------------------------------------------------------------------------------
+            # these are reads without CpG sites captured
+            else:
+                # remove MM,ML tag, in case there is an MM,ML tag already
+                read.set_tag('MM', None)
+                read.set_tag('ML', None)
+                if  KiFlag == "remove":
+                    read.set_tag('fi', None)
+                    read.set_tag('fp', None)
+                    read.set_tag('ri', None)
+                    read.set_tag('rp', None)
+                read_full_tags_list = read.get_tags(with_value_type = False)
+                read.set_tags(read_full_tags_list)
+                # (4B) write out
+                output_reads.append(read)
+                if len(output_reads) >= 10000:
+                    for processed_read in output_reads:
+                        outsamfile.write(processed_read)
+                    output_reads.clear()   
+        # ------------------------------------------------------------------------------------------------
+        # these are reads failed the condition
+        else:
+            # remove MM,ML tag, in case there is an MM,ML tag already
+            read.set_tag('MM', None)
+            read.set_tag('ML', None)
+            if  KiFlag == "remove":
+                read.set_tag('fi', None)
+                read.set_tag('fp', None)
+                read.set_tag('ri', None)
+                read.set_tag('rp', None)
+            read_full_tags_list = read.get_tags(with_value_type = False)
+            read.set_tags(read_full_tags_list)
+            # (4B) write out
+            output_reads.append(read)
+            if len(output_reads) >= 10000:
+                for processed_read in output_reads:
+                    outsamfile.write(processed_read)
+                output_reads.clear()
+
     # Write out the remaining lines if any
     if output_reads:
         for processed_read in output_reads:
