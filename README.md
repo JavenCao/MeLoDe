@@ -3,10 +3,10 @@
 
 ## Installation
 
- git clone ### (can we also include Tensorlow_CC into our git, so that users will not need to do this)
- cd /path/to/MeLoDe-Main
- make
- export PATH=$PATH:/path/to/MeLoDe-Main/bin
+           git clone ### (can we also include Tensorlow_CC into our git, so that users will not need to do this)
+           cd /path/to/MeLoDe-Main
+           make
+           export PATH=$PATH:/path/to/MeLoDe-Main/bin
 
 ## Workflow of MeLoDe in the low-depth long reads sequencing data
 
