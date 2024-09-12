@@ -1,6 +1,13 @@
 # MeLoDe
  <u>**De**</u>tect DNA **Me**thylaion from **Lo**w-depth long-read sequencing
 
+## Installation
+
+ git clone ### (can we also include Tensorlow_CC into our git, so that users will not need to do this)
+ cd /path/to/MeLoDe-Main
+ make
+ export PATH=$PATH:/path/to/MeLoDe-Main/bin
+
 ## Workflow of MeLoDe in the low-depth long reads sequencing data
 
 MeLoDe is developped to detect DNAm for low-depth LRS data, which is an experimental design used in population-scale study.
