@@ -285,7 +285,7 @@ def TOP_HiFiReadsMeth(Topbam, modTopbam, minsubdep, maxsubdep, R, scaleFlag, KiF
                 if len(output_reads) >= 10000:
                     for processed_read in output_reads:
                         outsamfile.write(processed_read)
-                    output_reads.clear()   
+                    output_reads.clear()
         # ------------------------------------------------------------------------------------------------
         # these are reads failed the condition
         else:
@@ -416,123 +416,183 @@ def Aligned_HiFiReadsMeth(bamf, cglist, outputp, outputType, minsubdep, maxsubde
     #
     # prediction process, by read by cpg.
     for read in samfile.fetch():
-        if (not read.is_secondary) and (not read.is_supplementary) and (read.mapping_quality >= mappingQ) and (Matching_ratio_Fun(read) >= 0.85):
-            fn = read.get_tag("fn")
-            rn = read.get_tag("rn")
-            total_subreads_dep = int(fn) + int(rn)
-            if (total_subreads_dep >= minsubdep) and (total_subreads_dep <= maxsubdep) and (int(fn) >= 1) and (int(rn) >= 1):
-                aln_ref_chr = read.reference_name
-                aln_ref_start = read.reference_start #0-based leftmost coordinate
-                aln_ref_end = read.reference_end
-                overlapping_cpg = find_overlapping_cpg(cglist_sort_increasing = cglist[aln_ref_chr], Ref_chr = aln_ref_chr, Ref_start = aln_ref_start, Ref_end = aln_ref_end)
-                #
-                if len(overlapping_cpg) >= 1:
-                    # ------------------------------------------------------------------------------------------------
-                    # step1: get the alignment information for the read
-                    read_fi_list = read.get_tag("fi")
-                    read_fp_list = read.get_tag("fp")
-                    read_ri_list = read.get_tag("ri")
-                    read_rp_list = read.get_tag("rp")
-                    read_SEQ_string = read.query_sequence
-                    read_is_reverse = read.is_reverse
-                    read_query_length = read.query_length
-                    read_cigartuples = read.cigartuples
-                    haplotype, haplotype_block = (str(read.get_tag("HP")), str(read.get_tag("PS"))) if read.has_tag("HP") else ("X", "X")# HP:i:2   PS:i:11457
-                    zmwname = str(read.query_name.split("/")[0]) + "_" + str(read.query_name.split("/")[1])
-                    zmwType = "H"# Hifi
-                    # ------------------------------------------------------------------------------------------------
-                    # step2: locate genome CpG to each read
-                    # return: ["cpg1":pos1,"cpg2":pos2 ... ]
-                    cpgPos_on_SEQ = locate_cpgPos_on_SEQ(aln_ref_chr = aln_ref_chr, aln_ref_start = aln_ref_start, read_cigar = read_cigartuples, overlapping_cpg = overlapping_cpg)
-                    # ----------------------------------------------------------------------------------------
-                    # heading or tailing removing
-                    cpgPos_on_SEQ_keys = list(cpgPos_on_SEQ)
-                    for key in cpgPos_on_SEQ_keys:
-                        if cpgPos_on_SEQ[key] < (R+5):
-                            del cpgPos_on_SEQ[key]
+        fn = read.get_tag("fn")
+        rn = read.get_tag("rn")
+        total_subreads_dep = int(fn) + int(rn)
+        if (not read.is_secondary) and (not read.is_supplementary) and (read.mapping_quality >= mappingQ) and (Matching_ratio_Fun(read) >= 0.85) and (total_subreads_dep >= minsubdep) and (total_subreads_dep <= maxsubdep) and (int(fn) >= 1) and (int(rn) >= 1):
+            #
+            aln_ref_chr = read.reference_name
+            aln_ref_start = read.reference_start #0-based leftmost coordinate
+            aln_ref_end = read.reference_end
+            overlapping_cpg = find_overlapping_cpg(cglist_sort_increasing = cglist[aln_ref_chr], Ref_chr = aln_ref_chr, Ref_start = aln_ref_start, Ref_end = aln_ref_end)
+            #
+            if len(overlapping_cpg) >= 1:
+                # ------------------------------------------------------------------------------------------------
+                # step1: get the alignment information for the read
+                read_fi_list = read.get_tag("fi")
+                read_fp_list = read.get_tag("fp")
+                read_ri_list = read.get_tag("ri")
+                read_rp_list = read.get_tag("rp")
+                read_SEQ_string = read.query_sequence
+                read_is_reverse = read.is_reverse
+                read_query_length = read.query_length
+                read_cigartuples = read.cigartuples
+                haplotype, haplotype_block = (str(read.get_tag("HP")), str(read.get_tag("PS"))) if read.has_tag("HP") else ("X", "X")# HP:i:2   PS:i:11457
+                zmwname = str(read.query_name.split("/")[0]) + "_" + str(read.query_name.split("/")[1])
+                zmwType = "H"# Hifi
+                # ------------------------------------------------------------------------------------------------
+                # step2: locate genome CpG to each read
+                # return: ["cpg1":pos1,"cpg2":pos2 ... ]
+                cpgPos_on_SEQ = locate_cpgPos_on_SEQ(aln_ref_chr = aln_ref_chr, aln_ref_start = aln_ref_start, read_cigar = read_cigartuples, overlapping_cpg = overlapping_cpg)
+                # ----------------------------------------------------------------------------------------
+                # heading or tailing removing
+                cpgPos_on_SEQ_keys = list(cpgPos_on_SEQ)
+                for key in cpgPos_on_SEQ_keys:
+                    if cpgPos_on_SEQ[key] < (R+5):
+                        del cpgPos_on_SEQ[key]
+                    else:
+                        break
+                for key in reversed(cpgPos_on_SEQ_keys):
+                    if cpgPos_on_SEQ[key] > len(read_SEQ_string) - R - 5:
+                        del cpgPos_on_SEQ[key]
+                    else:
+                        break
+                # cpgPos_on_top_strand(5'->3'), still in the order of ["cpg1":top_pos1, "cpg2":top_pos2,]. such as ['chr1_100':200, 'chr1_1111':20]
+                cpgPos_on_top_strand = Con_posSEQ_to_posRead(read_is_reverse = read_is_reverse, read_length = read_query_length, pos_on_SEQ_dict = cpgPos_on_SEQ)
+                # ----------------------------------------------------------------------------------------                          
+                if len(cpgPos_on_SEQ) >= 1:
+                    X_reads = np.empty((len(cpgPos_on_SEQ), 13, 2*R+1))
+                    all_cpgs = list(cpgPos_on_SEQ)
+                    for index in range(len(cpgPos_on_SEQ)):
+                        cpg = all_cpgs[index]
+                        pos_on_SEQ = cpgPos_on_SEQ[cpg]
+                        # collect read level features
+                        F_template_seq, F_ipd_list, F_pw_list, R_template_seq, R_ipd_list, R_pw_list = HiFiRead_cpg_K_Feature(pos_on_SEQ, read_is_reverse, R, read_query_length, read_SEQ_string, read_fi_list, read_fp_list, read_ri_list, read_rp_list, scaleFlag)
+                        # construct the feature matrix
+                        X_mat_cpg = Format_closedZMW(F_template_seq = F_template_seq, F_ipdlist = F_ipd_list, F_pwlist = F_pw_list, R_template_seq = R_template_seq, R_ipdlist = R_ipd_list, R_pwlist = R_pw_list, npasses = total_subreads_dep)
+                        # add X_mat_cpg to the X_reads
+                        X_reads[index] = X_mat_cpg
+                    #
+                    # make predictions for the current read
+                    predictions_list = read_Meth_prediction(X_reads, loaded_model)
+                    ###########################
+                    #### write out process ####
+                    ###########################
+                    if outputType == "MoleculeLevel":
+                        Chr_info, Pos_info = zip(*[cpg.split("_") for cpg in all_cpgs])
+                        common_info = [zmwname, zmwType, total_subreads_dep, haplotype, haplotype_block, '+']
+                        ZMW_info, zmwdep_info, Hap_info, HapBlk_info, strand_sign = [[info] * len(cpgPos_on_SEQ) for info in common_info]
+                        predictions_bi = (predictions_list >= 0.5).astype(int)
+                        df_testing_pre = pd.DataFrame(
+                            {
+                                "Chr": Chr_info,
+                                "Pos1": Pos_info,
+                                "ZMWid": ZMW_info,
+                                "ZMWtype": zmwType,
+                                "subdepth": zmwdep_info,
+                                "Hap": Hap_info,
+                                "HapBlk": HapBlk_info,
+                                "strand": strand_sign,
+                                "y_pred": predictions_list,
+                                "y_pred_bi": predictions_bi
+                            }
+                        )
+                        df_testing_pre.to_csv(fout, sep='\t', index=False, compression='gzip')
+                    if outputType == "ModBam":
+                        # 2024-01-05: need to distinguish +- strand, since MM,ML tag is with respected to top_strand(5'->3')
+                        if read_is_reverse:
+                            predictions_list = predictions_list[::-1]
+                            top_strand = str_complementary(read_SEQ_string[::-1])
+                            cpgPos_on_top_strand_rev = dict(reversed(cpgPos_on_top_strand.items()))#reverse the key order, such as ['chr1_100':200, 'chr1_1111':20] to ['chr1_1111':20, 'chr1_100':200]
                         else:
-                            break
-                    for key in reversed(cpgPos_on_SEQ_keys):
-                        if cpgPos_on_SEQ[key] > len(read_SEQ_string) - R - 5:
-                            del cpgPos_on_SEQ[key]
-                        else:
-                            break
-                    # cpgPos_on_top_strand(5'->3'), still in the order of ["cpg1":top_pos1, "cpg2":top_pos2,]. such as ['chr1_100':200, 'chr1_1111':20]
-                    cpgPos_on_top_strand = Con_posSEQ_to_posRead(read_is_reverse = read_is_reverse, read_length = read_query_length, pos_on_SEQ_dict = cpgPos_on_SEQ)
-                    # ----------------------------------------------------------------------------------------                          
-                    if len(cpgPos_on_SEQ) >= 1:
-                        X_reads = np.empty((len(cpgPos_on_SEQ), 13, 2*R+1))
-                        all_cpgs = list(cpgPos_on_SEQ)
-                        for index in range(len(cpgPos_on_SEQ)):
-                            cpg = all_cpgs[index]
-                            pos_on_SEQ = cpgPos_on_SEQ[cpg]
-                            # collect read level features
-                            F_template_seq, F_ipd_list, F_pw_list, R_template_seq, R_ipd_list, R_pw_list = HiFiRead_cpg_K_Feature(pos_on_SEQ, read_is_reverse, R, read_query_length, read_SEQ_string, read_fi_list, read_fp_list, read_ri_list, read_rp_list, scaleFlag)
-                            # construct the feature matrix
-                            X_mat_cpg = Format_closedZMW(F_template_seq = F_template_seq, F_ipdlist = F_ipd_list, F_pwlist = F_pw_list, R_template_seq = R_template_seq, R_ipdlist = R_ipd_list, R_pwlist = R_pw_list, npasses = total_subreads_dep)
-                            # add X_mat_cpg to the X_reads
-                            X_reads[index] = X_mat_cpg
-                        #
-                        # make predictions for the current read
-                        predictions_list = read_Meth_prediction(X_reads, loaded_model)
-                        ###########################
-                        #### write out process ####
-                        ###########################
-                        if outputType == "MoleculeLevel":
-                            Chr_info, Pos_info = zip(*[cpg.split("_") for cpg in all_cpgs])
-                            common_info = [zmwname, zmwType, total_subreads_dep, haplotype, haplotype_block, '+']
-                            ZMW_info, zmwdep_info, Hap_info, HapBlk_info, strand_sign = [[info] * len(cpgPos_on_SEQ) for info in common_info]
-                            predictions_bi = (predictions_list >= 0.5).astype(int)
-                            df_testing_pre = pd.DataFrame(
-                                {
-                                    "Chr": Chr_info,
-                                    "Pos1": Pos_info,
-                                    "ZMWid": ZMW_info,
-                                    "ZMWtype": zmwType,
-                                    "subdepth": zmwdep_info,
-                                    "Hap": Hap_info,
-                                    "HapBlk": HapBlk_info,
-                                    "strand": strand_sign,
-                                    "y_pred": predictions_list,
-                                    "y_pred_bi": predictions_bi
-                                }
-                            )
-                            df_testing_pre.to_csv(fout, sep='\t', index=False, compression='gzip')
-                        if outputType == "ModBam":
-                            # 2024-01-05: need to distinguish +- strand, since MM,ML tag is with respected to top_strand(5'->3')
-                            if read_is_reverse:
-                                predictions_list = predictions_list[::-1]
-                                top_strand = str_complementary(read_SEQ_string[::-1])
-                                cpgPos_on_top_strand_rev = dict(reversed(cpgPos_on_top_strand.items()))#reverse the key order, such as ['chr1_100':200, 'chr1_1111':20] to ['chr1_1111':20, 'chr1_100':200]
-                            else:
-                                top_strand = read_SEQ_string
-                                cpgPos_on_top_strand_rev = cpgPos_on_top_strand
-                            # (1)
-                            MLtag_value = array.array('i', (predictions_list * 256).astype(int))
-                            MLtag_tuple = ("ML", MLtag_value)
-                            # (2)
-                            MMtag_value = create_MMtag_value_selected_motif(top_strand, Selected_motif_pos_on_top_strand=cpgPos_on_top_strand_rev, umodifiedbase='C')
-                            MMtag_tuple = ("MM", "C+m," + MMtag_value + ";")
-                            # (3)
-                            if  KiFlag == "remove":
-                                read.set_tag('fi', None)
-                                read.set_tag('fp', None)
-                                read.set_tag('ri', None)
-                                read.set_tag('rp', None)
-                            read_full_tags_list = read.get_tags(with_value_type = False)
-                            read_full_tags_list.append(MMtag_tuple)
-                            read_full_tags_list.append(MLtag_tuple)
-                            read.set_tags(read_full_tags_list)
-                            # (4) write out
-                            output_reads.append(read)
-                            if len(output_reads) >= 10000:
-                                for processed_read in output_reads:
-                                    outsamfile.write(processed_read)
-                                output_reads.clear()
-                            # Write out the remaining lines if any
-                            if output_reads:
-                                for processed_read in output_reads:
-                                    outsamfile.write(processed_read)
+                            top_strand = read_SEQ_string
+                            cpgPos_on_top_strand_rev = cpgPos_on_top_strand
+                        # (1)
+                        MLtag_value = array.array('i', (predictions_list * 256).astype(int))
+                        MLtag_tuple = ("ML", MLtag_value)
+                        # (2)
+                        MMtag_value = create_MMtag_value_selected_motif(top_strand, Selected_motif_pos_on_top_strand=cpgPos_on_top_strand_rev, umodifiedbase='C')
+                        MMtag_tuple = ("MM", "C+m," + MMtag_value + ";")
+                        # (3)
+                        if  KiFlag == "remove":
+                            read.set_tag('fi', None)
+                            read.set_tag('fp', None)
+                            read.set_tag('ri', None)
+                            read.set_tag('rp', None)
+                        read_full_tags_list = read.get_tags(with_value_type = False)
+                        read_full_tags_list.append(MMtag_tuple)
+                        read_full_tags_list.append(MLtag_tuple)
+                        read.set_tags(read_full_tags_list)
+                        # (4) write out
+                        output_reads.append(read)
+                        if len(output_reads) >= 10000:
+                            for processed_read in output_reads:
+                                outsamfile.write(processed_read)
+                            output_reads.clear()
+                        # Write out the remaining lines if any
+                        if output_reads:
+                            for processed_read in output_reads:
+                                outsamfile.write(processed_read)
+                # ---------------------------------------------------------------------------------------------------------------
+                # these are aligned_reads failed the condition
+                else:
+                    if outputType == "ModBam":
+                        # remove MM,ML tag, in case there is an MM,ML tag already
+                        read.set_tag('MM', None)
+                        read.set_tag('ML', None)
+                        if  KiFlag == "remove":
+                            read.set_tag('fi', None)
+                            read.set_tag('fp', None)
+                            read.set_tag('ri', None)
+                            read.set_tag('rp', None)
+                        read_full_tags_list = read.get_tags(with_value_type = False)
+                        read.set_tags(read_full_tags_list)
+                        # (4B) write out
+                        output_reads.append(read)
+                        if len(output_reads) >= 10000:
+                            for processed_read in output_reads:
+                                outsamfile.write(processed_read)
+                            output_reads.clear()
+            # ---------------------------------------------------------------------------------------------------------------
+            # these are aligned_reads failed the condition
+            else:
+                if outputType == "ModBam":
+                    # remove MM,ML tag, in case there is an MM,ML tag already
+                    read.set_tag('MM', None)
+                    read.set_tag('ML', None)
+                    if  KiFlag == "remove":
+                        read.set_tag('fi', None)
+                        read.set_tag('fp', None)
+                        read.set_tag('ri', None)
+                        read.set_tag('rp', None)
+                    read_full_tags_list = read.get_tags(with_value_type = False)
+                    read.set_tags(read_full_tags_list)
+                    # (4B) write out
+                    output_reads.append(read)
+                    if len(output_reads) >= 10000:
+                        for processed_read in output_reads:
+                            outsamfile.write(processed_read)
+                        output_reads.clear()
+        # ---------------------------------------------------------------------------------------------------------------
+        # these are aligned_reads failed the condition
+        else:
+            if outputType == "ModBam":
+                # remove MM,ML tag, in case there is an MM,ML tag already
+                read.set_tag('MM', None)
+                read.set_tag('ML', None)
+                if  KiFlag == "remove":
+                    read.set_tag('fi', None)
+                    read.set_tag('fp', None)
+                    read.set_tag('ri', None)
+                    read.set_tag('rp', None)
+                read_full_tags_list = read.get_tags(with_value_type = False)
+                read.set_tags(read_full_tags_list)
+                # (4B) write out
+                output_reads.append(read)
+                if len(output_reads) >= 10000:
+                    for processed_read in output_reads:
+                        outsamfile.write(processed_read)
+                    output_reads.clear()
     return 0
 
 #
