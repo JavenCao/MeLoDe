@@ -492,11 +492,11 @@ def Aligned_HiFiReadsMeth(bamf, cglist, outputp, outputType, minsubdep, maxsubde
                                 "Hap": Hap_info,
                                 "HapBlk": HapBlk_info,
                                 "strand": strand_sign,
-                                "y_pred": predictions_list,
-                                "y_pred_bi": predictions_bi
+                                "y_pred": list(predictions_list),
+                                "y_pred_bi": list(predictions_bi)
                             }
                         )
-                        df_testing_pre.to_csv(outfile, sep='\t', index=False, compression='gzip',mode='a',header=False)
+                        df_testing_pre.to_csv(outfile, sep='\t', index=False, compression='gzip',mode='a',header=False,encoding='utf-8')
                     if outputType == "ModBam":
                         # 2024-01-05: need to distinguish +- strand, since MM,ML tag is with respected to top_strand(5'->3')
                         if read_is_reverse:
@@ -944,7 +944,7 @@ def Aligned_subreadsBam_Feature(bamf, cglist, outputp, outputType, mappingQ, R, 
 #
 def Aligned_subreadsBam_Meth(bamf, cglist, outputp, outputType, mappingQ, R, scaleFlag,closedZMW_subreads_model,openZMW_subreads_model):
     """
-        2024-01-16,2024-01-19
+        2024-10-09,2024-01-16,2024-01-19
         INPUT: aligned subreads BAM file with ip/pw tags
         OUTPUT: outputType == "MoleculeLevel": Single molecule level prediction
     """
@@ -1016,22 +1016,22 @@ def Aligned_subreadsBam_Meth(bamf, cglist, outputp, outputType, mappingQ, R, sca
                                     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
                                         # (1) both ClosedZMW and OpenZMW are there
                                         if i > 0 and j > 0:
-                                            ClosedZMW_X_pred = read_Meth_prediction(ClosedZMW_X, closedZMW_subreads_model)
-                                            OpenZMW_X_pred = read_Meth_prediction(OpenZMW_X, openZMW_subreads_model)
+                                            ClosedZMW_X_pred = list(read_Meth_prediction(ClosedZMW_X, closedZMW_subreads_model))
+                                            OpenZMW_X_pred = list(read_Meth_prediction(OpenZMW_X, openZMW_subreads_model))
                                             df_closedzmw_pre = format_zmw_data(Chr = Chr, Pos = Pos, ZMW_name = ClosedZMW_name, ZMW_passes = ClosedZMW_passes, ZMW_X_pred = ClosedZMW_X_pred, ZMW_Type='C')
                                             df_openzmw_pre = format_zmw_data(Chr = Chr, Pos = Pos, ZMW_name = OpenZMW_name, ZMW_passes = OpenZMW_passes, ZMW_X_pred = OpenZMW_X_pred, ZMW_Type='O')
                                             merged_df = pd.concat([df_closedzmw_pre, df_openzmw_pre], ignore_index = True)
-                                            merged_df.to_csv(fout, sep='\t', index=False, compression='gzip')
+                                            merged_df.to_csv(outfile, sep='\t', index=False, compression='gzip',mode='a',header=False,encoding='utf-8')
                                         # (2) only ClosedZMW are there
                                         if i > 0 and j == 0:
-                                            ClosedZMW_X_pred = read_Meth_prediction(ClosedZMW_X, closedZMW_subreads_model)
+                                            ClosedZMW_X_pred = list(read_Meth_prediction(ClosedZMW_X, closedZMW_subreads_model))
                                             df_closedzmw_pre = format_zmw_data(Chr = Chr, Pos = Pos, ZMW_name = ClosedZMW_name, ZMW_passes = ClosedZMW_passes, ZMW_X_pred = ClosedZMW_X_pred, ZMW_Type='C')
-                                            df_closedzmw_pre.to_csv(fout, sep='\t', index=False, compression='gzip')
+                                            df_closedzmw_pre.to_csv(outfile, sep='\t', index=False, compression='gzip',mode='a',header=False,encoding='utf-8')
                                         # (3) only OpenZMW are there
                                         if i == 0 and j > 0:
-                                            OpenZMW_X_pred = read_Meth_prediction(OpenZMW_X, openZMW_subreads_model)
+                                            OpenZMW_X_pred = list(read_Meth_prediction(OpenZMW_X, openZMW_subreads_model))
                                             df_openzmw_pre = format_zmw_data(Chr = Chr, Pos = Pos, ZMW_name = OpenZMW_name, ZMW_passes = OpenZMW_passes, ZMW_X_pred = OpenZMW_X_pred, ZMW_Type='O')
-                                            df_openzmw_pre.to_csv(fout, sep='\t', index=False, compression='gzip')
+                                            df_openzmw_pre.to_csv(outfile, sep='\t', index=False, compression='gzip',mode='a',header=False,encoding='utf-8')
                                     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
                                     processed_read_count = 0
                                     # remove the top cpgs from the Feature_dict
@@ -1050,22 +1050,22 @@ def Aligned_subreadsBam_Meth(bamf, cglist, outputp, outputType, mappingQ, R, sca
                                 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
                                     # (1) both ClosedZMW and OpenZMW are there
                                     if i > 0 and j > 0:
-                                        ClosedZMW_X_pred = read_Meth_prediction(ClosedZMW_X, closedZMW_subreads_model)
-                                        OpenZMW_X_pred = read_Meth_prediction(OpenZMW_X, openZMW_subreads_model)
+                                        ClosedZMW_X_pred = list(read_Meth_prediction(ClosedZMW_X, closedZMW_subreads_model))
+                                        OpenZMW_X_pred = list(read_Meth_prediction(OpenZMW_X, openZMW_subreads_model))
                                         df_closedzmw_pre = format_zmw_data(Chr = Chr, Pos = Pos, ZMW_name = ClosedZMW_name, ZMW_passes = ClosedZMW_passes, ZMW_X_pred = ClosedZMW_X_pred, ZMW_Type='C')
                                         df_openzmw_pre = format_zmw_data(Chr = Chr, Pos = Pos, ZMW_name = OpenZMW_name, ZMW_passes = OpenZMW_passes, ZMW_X_pred = OpenZMW_X_pred, ZMW_Type='O')
                                         merged_df = pd.concat([df_closedzmw_pre, df_openzmw_pre], ignore_index = True)
-                                        merged_df.to_csv(fout, sep='\t', index=False, compression='gzip')
+                                        merged_df.to_csv(outfile, sep='\t', index=False, compression='gzip',mode='a',header=False,encoding='utf-8')
                                     # (2) only ClosedZMW are there
                                     if i > 0 and j == 0:
-                                        ClosedZMW_X_pred = read_Meth_prediction(ClosedZMW_X, closedZMW_subreads_model)
+                                        ClosedZMW_X_pred = list(read_Meth_prediction(ClosedZMW_X, closedZMW_subreads_model))
                                         df_closedzmw_pre = format_zmw_data(Chr = Chr, Pos = Pos, ZMW_name = ClosedZMW_name, ZMW_passes = ClosedZMW_passes, ZMW_X_pred = ClosedZMW_X_pred, ZMW_Type='C')
-                                        df_closedzmw_pre.to_csv(fout, sep='\t', index=False, compression='gzip')
+                                        df_closedzmw_pre.to_csv(outfile, sep='\t', index=False, compression='gzip',mode='a',header=False,encoding='utf-8')
                                     # (3) only OpenZMW are there
                                     if i == 0 and j > 0:
-                                        OpenZMW_X_pred = read_Meth_prediction(OpenZMW_X, openZMW_subreads_model)
+                                        OpenZMW_X_pred = list(read_Meth_prediction(OpenZMW_X, openZMW_subreads_model))
                                         df_openzmw_pre = format_zmw_data(Chr = Chr, Pos = Pos, ZMW_name = OpenZMW_name, ZMW_passes = OpenZMW_passes, ZMW_X_pred = OpenZMW_X_pred, ZMW_Type='O')
-                                        df_openzmw_pre.to_csv(fout, sep='\t', index=False, compression='gzip')
+                                        df_openzmw_pre.to_csv(outfile, sep='\t', index=False, compression='gzip',mode='a',header=False,encoding='utf-8')
                                 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
                                 for out_cpg in first_C_chr_cpgs:
                                     del Feature_dict[out_cpg]
@@ -1085,24 +1085,23 @@ def Aligned_subreadsBam_Meth(bamf, cglist, outputp, outputType, mappingQ, R, sca
             # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
                 # (1) both ClosedZMW and OpenZMW are there
                 if i > 0 and j > 0:
-                    ClosedZMW_X_pred = read_Meth_prediction(ClosedZMW_X, closedZMW_subreads_model)
-                    OpenZMW_X_pred = read_Meth_prediction(OpenZMW_X, openZMW_subreads_model)
+                    ClosedZMW_X_pred = list(read_Meth_prediction(ClosedZMW_X, closedZMW_subreads_model))
+                    OpenZMW_X_pred = list(read_Meth_prediction(OpenZMW_X, openZMW_subreads_model))
                     df_closedzmw_pre = format_zmw_data(Chr = Chr, Pos = Pos, ZMW_name = ClosedZMW_name, ZMW_passes = ClosedZMW_passes, ZMW_X_pred = ClosedZMW_X_pred, ZMW_Type='C')
                     df_openzmw_pre = format_zmw_data(Chr = Chr, Pos = Pos, ZMW_name = OpenZMW_name, ZMW_passes = OpenZMW_passes, ZMW_X_pred = OpenZMW_X_pred, ZMW_Type='O')
                     merged_df = pd.concat([df_closedzmw_pre, df_openzmw_pre], ignore_index = True)
                     merged_df.to_csv(outfile, sep='\t', index=False, compression='gzip',mode='a',header=False)
                 # (2) only ClosedZMW are there
                 if i > 0 and j == 0:
-                    ClosedZMW_X_pred = read_Meth_prediction(ClosedZMW_X, closedZMW_subreads_model)
+                    ClosedZMW_X_pred = list(read_Meth_prediction(ClosedZMW_X, closedZMW_subreads_model))
                     df_closedzmw_pre = format_zmw_data(Chr = Chr, Pos = Pos, ZMW_name = ClosedZMW_name, ZMW_passes = ClosedZMW_passes, ZMW_X_pred = ClosedZMW_X_pred, ZMW_Type='C')
                     df_closedzmw_pre.to_csv(outfile, sep='\t', index=False, compression='gzip',mode='a',header=False)
                 # (3) only OpenZMW are there
                 if i == 0 and j > 0:
-                    OpenZMW_X_pred = read_Meth_prediction(OpenZMW_X, openZMW_subreads_model)
+                    OpenZMW_X_pred = list(read_Meth_prediction(OpenZMW_X, openZMW_subreads_model))
                     df_openzmw_pre = format_zmw_data(Chr = Chr, Pos = Pos, ZMW_name = OpenZMW_name, ZMW_passes = OpenZMW_passes, ZMW_X_pred = OpenZMW_X_pred, ZMW_Type='O')
                     df_openzmw_pre.to_csv(outfile, sep='\t', index=False, compression='gzip',mode='a',header=False)
             # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-        fout.close() 
     else:
         print("error! subreads bam should beoutputType == MoleculeLeve")
 #
