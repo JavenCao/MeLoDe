@@ -481,7 +481,7 @@ def Aligned_HiFiReadsMeth(bamf, cglist, outputp, outputType, minsubdep, maxsubde
                     if outputType == "MoleculeLevel":
                         Chr_info, Pos_info = zip(*[cpg.split("_") for cpg in all_cpgs])
                         common_info = [zmwname, zmwType, total_subreads_dep, haplotype, haplotype_block, '+']
-                        ZMW_info, zmwdep_info, Hap_info, HapBlk_info, strand_sign = [[info] * len(cpgPos_on_SEQ) for info in common_info]
+                        ZMW_info, zmwType, zmwdep_info, Hap_info, HapBlk_info, strand_sign = [[info] * len(cpgPos_on_SEQ) for info in common_info]
                         predictions_bi = (predictions_list >= 0.5).astype(int)
                         df_testing_pre = pd.DataFrame(
                             {
@@ -768,6 +768,7 @@ def str_complementary(string_a):
 #
 def read_Meth_prediction(X_reads, loaded_model):
     """
+    Modified, 2024-10-09, create predictions_list, Done
     Modified,2024-07-23,notes: the golang version should be correct, no update is needed
     Freeze,2024-01-04
     """
@@ -777,7 +778,10 @@ def read_Meth_prediction(X_reads, loaded_model):
     inference_func = loaded_model.signatures["serving_default"]
     predictions = inference_func(input_1=X_test_tensor)
     key = list(predictions)[0]
-    predictions_list = predictions[key].flatten()
+
+    predictions_array = predictions[key].numpy()
+    predictions_list = predictions_array.flatten()
+
     return predictions_list
 #
 #
@@ -1409,22 +1413,25 @@ def Buildcglist_dict_Seq(infasta):
             cglist_dict[chromosome] = sorted(cglist_dict[chromosome], key=lambda x: int(x.split("_")[1]))
     return cglist_dict
 #
-#
+
 def pattern_search(chr_name, string, pattern):
     """
+    Freeze 2024-10-09
     > ATTTCTCTCTCGAAAAAAAACGAAAAAAAA
     > 123456789012345678901234567890
     > print(pattern_search(a,'CG'))
     > [11, 21]
     """
-    position = []
+    positions = []
     str_len = len(string)
     pat_len = len(pattern)
-    for i in range(0,str_len-pat_len+1):
-        for j in range(0,pat_len):
-            if string[i+j]!=pattern[j]:
-                break
+    i = 0
+    while i <= str_len - pat_len:
+        if string[i:i+pat_len] == pattern:
+            position = f"{chr_name}_{i+1}"
+            positions.append(position)
+            i += pat_len  # Skip to the next position after the pattern
+
         else:
-            value = chr_name + "_" + str(i+1)
-            position.append(value)
-    return position
+            i += 1  # Move to the next character
+    return positions
