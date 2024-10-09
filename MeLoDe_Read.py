@@ -777,10 +777,8 @@ def read_Meth_prediction(X_reads, loaded_model):
     inference_func = loaded_model.signatures["serving_default"]
     predictions = inference_func(input_1=X_test_tensor)
     key = list(predictions)[0]
-
     predictions_array = predictions[key].numpy()
     predictions_list = predictions_array.flatten()
-
     return predictions_list
 #
 #
@@ -1429,7 +1427,6 @@ def pattern_search(chr_name, string, pattern):
             position = f"{chr_name}_{i+1}"
             positions.append(position)
             i += pat_len  # Skip to the next position after the pattern
-
         else:
             i += 1  # Move to the next character
     return positions
