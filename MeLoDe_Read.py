@@ -411,7 +411,6 @@ def Aligned_HiFiReadsMeth(bamf, cglist, outputp, outputType, minsubdep, maxsubde
     if outputType == "MoleculeLevel":
         # Action: Sinle molecule level prediction
         outfile = outputp + ".SingleMol.pre.txt.gz"
-        fout = gzip.open(outfile, "wb")
     # ---------
     #
     # prediction process, by read by cpg.
@@ -497,7 +496,7 @@ def Aligned_HiFiReadsMeth(bamf, cglist, outputp, outputType, minsubdep, maxsubde
                                 "y_pred_bi": predictions_bi
                             }
                         )
-                        df_testing_pre.to_csv(fout, sep='\t', index=False, compression='gzip')
+                        df_testing_pre.to_csv(outfile, sep='\t', index=False, compression='gzip',mode='a',header=False)
                     if outputType == "ModBam":
                         # 2024-01-05: need to distinguish +- strand, since MM,ML tag is with respected to top_strand(5'->3')
                         if read_is_reverse:
@@ -954,7 +953,7 @@ def Aligned_subreadsBam_Meth(bamf, cglist, outputp, outputType, mappingQ, R, sca
     Feature_dict = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(list))))
     if outputType == "MoleculeLevel":
         outfile = outputp + ".SingleMol.pre.txt.gz"
-        fout = gzip.open(outfile, "wb")
+        # fout = gzip.open(outfile, "wb")
         processed_read_count = 0
         for read in samfile.fetch():
             if (not read.is_secondary) and (not read.is_supplementary) and (read.mapping_quality >= mappingQ) and (Matching_ratio_Fun(read) >= 0.85):
@@ -1091,17 +1090,17 @@ def Aligned_subreadsBam_Meth(bamf, cglist, outputp, outputType, mappingQ, R, sca
                     df_closedzmw_pre = format_zmw_data(Chr = Chr, Pos = Pos, ZMW_name = ClosedZMW_name, ZMW_passes = ClosedZMW_passes, ZMW_X_pred = ClosedZMW_X_pred, ZMW_Type='C')
                     df_openzmw_pre = format_zmw_data(Chr = Chr, Pos = Pos, ZMW_name = OpenZMW_name, ZMW_passes = OpenZMW_passes, ZMW_X_pred = OpenZMW_X_pred, ZMW_Type='O')
                     merged_df = pd.concat([df_closedzmw_pre, df_openzmw_pre], ignore_index = True)
-                    merged_df.to_csv(fout, sep='\t', index=False, compression='gzip')
+                    merged_df.to_csv(outfile, sep='\t', index=False, compression='gzip',mode='a',header=False)
                 # (2) only ClosedZMW are there
                 if i > 0 and j == 0:
                     ClosedZMW_X_pred = read_Meth_prediction(ClosedZMW_X, closedZMW_subreads_model)
                     df_closedzmw_pre = format_zmw_data(Chr = Chr, Pos = Pos, ZMW_name = ClosedZMW_name, ZMW_passes = ClosedZMW_passes, ZMW_X_pred = ClosedZMW_X_pred, ZMW_Type='C')
-                    df_closedzmw_pre.to_csv(fout, sep='\t', index=False, compression='gzip')
+                    df_closedzmw_pre.to_csv(outfile, sep='\t', index=False, compression='gzip',mode='a',header=False)
                 # (3) only OpenZMW are there
                 if i == 0 and j > 0:
                     OpenZMW_X_pred = read_Meth_prediction(OpenZMW_X, openZMW_subreads_model)
                     df_openzmw_pre = format_zmw_data(Chr = Chr, Pos = Pos, ZMW_name = OpenZMW_name, ZMW_passes = OpenZMW_passes, ZMW_X_pred = OpenZMW_X_pred, ZMW_Type='O')
-                    df_openzmw_pre.to_csv(fout, sep='\t', index=False, compression='gzip')
+                    df_openzmw_pre.to_csv(outfile, sep='\t', index=False, compression='gzip',mode='a',header=False)
             # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
         fout.close() 
     else:
