@@ -753,9 +753,12 @@ def Matching_ratio_Fun(read):
     return Matching_ratio
 #
 def getkineticswin(inputKlist, scaleFlag=True):
+    """Freeze,2024-10-11: Modified"""
     """Freeze,2024-01-04"""
     if scaleFlag:
         Kmin, Kmean, Kstd = getliststat(inputKlist)
+        if Kstd == 0:
+            Kstd = 0.1
         Kwinlist = np.round(((np.array(inputKlist)) - Kmean) / Kstd, 2)
         return Kwinlist
     else:
@@ -1352,6 +1355,7 @@ def get_ccs(seqstring_arrays):
 #
 def create_MMtag_value_selected_motif(top_strand, Selected_motif_pos_on_top_strand, umodifiedbase='C'):
     """
+    Freeze,Modified,2024-10-11
     Freeze,2024-01-05
     INPUT: top_strand is the 5'->3' raw read from the sequencing machine.
            Selected_motif_pos_on_top_strand: such as CpG position on top_strand, these are the selected motifs that should be targeted. small positions come first
@@ -1369,7 +1373,8 @@ def create_MMtag_value_selected_motif(top_strand, Selected_motif_pos_on_top_stra
     seq_0_lcpg = top_strand[0:leadingcpg_pos]
     count_0_lcpg = seq_0_lcpg.count(umodifiedbase)
     MMtag_value = str(count_0_lcpg)
-    for c1, c2 in zip(Selected_motif_pos_on_top_strand[::2], Selected_motif_pos_on_top_strand[1::2]):
+    
+    for c1, c2 in zip(Selected_motif_pos_on_top_strand[::1], Selected_motif_pos_on_top_strand[1::1]):
         c1_pos_on_read = c1
         c2_pos_on_read = c2
         seq_c1_c2 = top_strand[c1_pos_on_read:c2_pos_on_read]
