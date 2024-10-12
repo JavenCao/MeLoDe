@@ -40,17 +40,11 @@ def Decode_tag_to_txt(bamf, outfile):
                 aln_ref_start = read.reference_start #0-based leftmost coordinate
                 zmwname = str(read.query_name.split("/")[0]) + "_" + str(read.query_name.split("/")[1])
                 ZMWtype = 'H'
-                fn = read.get_tag("fn")
-                rn = read.get_tag("rn")
-                total_subreads_dep = int(fn) + int(rn)
+                fn = read.get_tag("fn") if read.has_tag("fn") else "X"
+                rn = read.get_tag("rn") if read.has_tag("rn") else "X"
+                total_subreads_dep = int(fn) + int(rn) if (fn!="X" and rn!="X") else "X"
                 haplotype, haplotype_block = (str(read.get_tag("HP")), str(read.get_tag("PS"))) if read.has_tag("HP") else ("X", "X")# HP:i:2   PS:i:11457
                 strand_sign = "+"
-                #
-                if read_is_reverse:
-                    top_strand = str_complementary(read_SEQ_string[::-1])
-                else:
-                    top_strand = read_SEQ_string
-                #
                 #
                 tag_on_SEQ_pos, tag_on_SEQ_prob = mm_ml_tag_on_SEQ(read_SEQ_string, read_is_reverse, mmtag, mltag)
                 # tag_on_Ref_pos may have different length as tag_on_SEQ_pos
@@ -61,11 +55,12 @@ def Decode_tag_to_txt(bamf, outfile):
                 for i in range(len(tag_on_Ref_pos)):
                     predictions_bi = (tag_on_SEQ_prob_update[i] >= 0.5).astype(int)
                     outline =f'{aln_ref_chr}\t{tag_on_Ref_pos[i]}\t{zmwname}\t{ZMWtype}\t{total_subreads_dep}\t{haplotype}\t{haplotype_block}\t{strand_sign}\t{tag_on_SEQ_prob_update[i]}\t{predictions_bi}\n'
-                    fout.write(outline.encode('utf-8'))                    
+                    fout.write(outline.encode('utf-8'))
 #
 #
 def Con_posSEQ_to_posRef(tag_on_SEQ_pos, aln_ref_chr, aln_ref_start, read_cigartuples, tag_on_SEQ_prob):
     """
+    Freeze,2024-10-11
     Freeze,2024-01-22
     """
     # same length as the input tag_on_SEQ_pos
@@ -76,7 +71,7 @@ def Con_posSEQ_to_posRef(tag_on_SEQ_pos, aln_ref_chr, aln_ref_start, read_cigart
         SEQ_pos = tag_on_SEQ_pos[index]
         read_pos_blk_start = 0
         read_pos_blk_end = 0
-        Ref_walking_pos_start = aln_ref_start
+        Ref_walking_pos_start = aln_ref_start + 1
         Ref_walking_pos_end = 0
         flag = 1
         #
@@ -90,11 +85,12 @@ def Con_posSEQ_to_posRef(tag_on_SEQ_pos, aln_ref_chr, aln_ref_start, read_cigart
             #
             # pos on Ref
             if (op == 0 or op == 2 or op == 3 or op == 7 or op == 8):
-                if (Ref_walking_pos_start == aln_ref_start) and (flag == 1):
+                if (Ref_walking_pos_start == aln_ref_start+1) and (flag == 1):
+
                     Ref_walking_pos_end = Ref_walking_pos_start + count
                     flag = 2
-                else:       
-                    Ref_walking_pos_start = Ref_walking_pos_end + 1
+                else:
+                    Ref_walking_pos_start = Ref_walking_pos_end
                     Ref_walking_pos_end = Ref_walking_pos_end + count
             # - - - - -
             # capture the cpg on read on the moving read
@@ -115,6 +111,7 @@ def Con_posSEQ_to_posRef(tag_on_SEQ_pos, aln_ref_chr, aln_ref_start, read_cigart
 #
 def mm_ml_tag_on_SEQ(read_SEQ_string, read_is_reverse, mmtag, mltag):
     """
+    Freeze,2024-10-12
     2024-01-22
             Read  AGTCTAGACTCCGTAATTACTCGCCTAG...
             C_index  1    2 34       5 6 78
@@ -139,8 +136,10 @@ def mm_ml_tag_on_SEQ(read_SEQ_string, read_is_reverse, mmtag, mltag):
     else:
         top_strand = read_SEQ_string
     # ---
-    # 2024-01-22
-    Cpos_on_top_strand = [i for i in range(len(top_strand)) if top_strand[i] == 'C']
+    # 2024-01-22:
+    # Cpos_on_top_strand = [i+1 for i in range(len(top_strand)) if top_strand[i] == 'C']
+    # 2024-10-12:1-based
+    Cpos_on_top_strand = [i+1 for i in range(len(top_strand)) if top_strand[i] == 'C']
     for index in range(total_targets):
         # 0-based index on the python vector
         C_cpg_index = np.sum(mmtag[0:index+1]) + index#[3,5,...]
@@ -149,10 +148,10 @@ def mm_ml_tag_on_SEQ(read_SEQ_string, read_is_reverse, mmtag, mltag):
         tag_on_TOP_prob.append(mltag[index]/256)
     # ---
     if read_is_reverse:
-        tag_on_SEQ_pos = [read_query_length-x-2 for x in (tag_on_TOP_pos[::-1])]
+        tag_on_SEQ_pos = [read_query_length-x-1 for x in (tag_on_TOP_pos[::-1])]
         tag_on_SEQ_prob = tag_on_TOP_prob[::-1]
     else:
-        tag_on_SEQ_pos = tag_on_TOP_pos
+        tag_on_SEQ_pos = [x-1 for x in tag_on_TOP_pos]
         tag_on_SEQ_prob = tag_on_TOP_prob
     # ---
     return tag_on_SEQ_pos,tag_on_SEQ_prob
