@@ -1341,6 +1341,8 @@ def get_ccs(seqstring_arrays):
     """
     # Transpose the array to work column-wise
     seqstring_arrays_transposed = list(zip(*seqstring_arrays))
+    # Define the ATCG priority order
+    priority_order = {'A': 0, 'T': 1, 'C': 2, 'G': 3}
     # Calculate the consensus sequence column-wise
     consensus_sequence = ''
     for column in seqstring_arrays_transposed:
@@ -1348,7 +1350,13 @@ def get_ccs(seqstring_arrays):
         most_common = counts.most_common()
         max_count = most_common[0][1]
         most_common_chars = [char for char, count in most_common if count == max_count]
-        selected_char = random.choice(most_common_chars)
+        #selected_char = random.choice(most_common_chars)
+        
+        # Sort the most common characters by ATCG order
+        most_common_chars.sort(key=lambda char: priority_order[char])
+        # Select the first character in the sorted list
+        selected_char = most_common_chars[0]
+
         consensus_sequence += selected_char
     return consensus_sequence
 #
