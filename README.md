@@ -1,6 +1,8 @@
 # MeLoDe
  <u>**De**</u>tect DNA **Me**thylaion from **Lo**w-depth long-read sequencing
 
+![combi_workflow](https://github.com/user-attachments/assets/06578406-3a93-4707-a708-2254ac188300)
+
 ## Installation
 
          git clone ### (can we also include Tensorlow_C and a GO into our git, and install them automatically, so that users will not need to do this)
