@@ -50,6 +50,9 @@ echo "Script absolute directory: $SCRIPT_DIR"
 export CGO_CFLAGS="-I$SCRIPT_DIR/libtensorflow/include"
 echo $CGO_CFLAGS
 
+#decompress libtensorflow.so.2.13.0.tar.bz2
+tar -xvjf $SCRIPT_DIR/libtensorflow/lib/libtensorflow.so.2.13.0.tar.bz2 -C $SCRIPT_DIR/libtensorflow/lib/
+
 export LIBRARY_PATH=$SCRIPT_DIR/libtensorflow/lib:$LIBRARY_PATH
 echo $LIBRARY_PATH
 

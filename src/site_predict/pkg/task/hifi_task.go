@@ -87,8 +87,8 @@ func normZMWprediction_H(ZMWprefile_HiFi string, minZMWDepth int) (map[string][]
 			countBasedPredDict[pos] = []float32{countBasedDNAmFreq, float32(meMolecules), float32(totalMolecules - meMolecules)}
 			depthOfMolCovDict[pos] = totalMolecules
 
-			HiFiNormProbList := calc.GetNormalizedHisto(lists[0])
-			log.Printf("pos:%s, list[0]:%v, HiFiNormProbList:%+v", pos, lists[0], HiFiNormProbList)
+			HiFiNormProbList := calc.GetNormalizedHistoHiFi(lists[0])
+			log.Printf("pos:%s, list[0]:%v, GetNormalizedHistoHiFi:%+v", pos, lists[0], HiFiNormProbList)
 
 			ZMWprobDictNorm[pos] = append(ZMWprobDictNorm[pos], HiFiNormProbList...)
 			ZMWprobDictNorm[pos] = append(ZMWprobDictNorm[pos], countBasedDNAmFreq)

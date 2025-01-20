@@ -47,6 +47,21 @@ func GetNormalizedHisto(probs []float32) []float32 {
 	return normHist
 }
 
+// GetNormalizedHistoHiFi computes the normalized histogram of the given probabilities.
+func GetNormalizedHistoHiFi(probs []float32) []float32 {
+	cov := len(probs)
+	if cov == 0 {
+		return make([]float32, 30)
+	}
+	hist := Histogram(probs, 30, 0, 1)
+	norm := L2Norm(hist)
+	normHist := make([]float32, 30)
+	for i, value := range hist {
+		normHist[i] = float32(value) / float32(norm)
+	}
+	return normHist
+}
+
 // SlidingWindowView creates a sliding window view of the given data with specified window size and axis.
 func SlidingWindowView(data *mat.Dense, windowSize int, axis int) []*mat.Dense {
 	rows, cols := data.Dims()
