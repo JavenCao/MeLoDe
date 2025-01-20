@@ -7,8 +7,10 @@
 
          git clone ### (can we also include Tensorlow_C and a GO into our git, and install them automatically, so that users will not need to do this)
          cd /path/to/MeLoDe-Main
-         make
+         sh install.sh
          export PATH=$PATH:/path/to/MeLoDe-Main/bin
+         export LD_LIBRARY_PATH=/path/to/MeLoDe-Main/libtensorflow/lib:$LD_LIBRARY_PATH
+
 
 ## Workflow of MeLoDe in the low-depth long reads sequencing data
 
