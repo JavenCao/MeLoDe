@@ -296,5 +296,5 @@ Put well-formatted CpG study-window into a .fofn (file of file names), such as:
                             -o /output/folder/
 
 ## Full parameter table
-TBD
+TBD test
 
