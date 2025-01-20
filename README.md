@@ -1,7 +1,7 @@
 # MeLoDe
  <u>**De**</u>tect DNA **Me**thylaion from **Lo**w-depth long-read sequencing
 
-![combi_workflow](https://github.com/user-attachments/assets/06578406-3a93-4707-a708-2254ac188300)
+![combi_workflow](Figure/combi_workflow.png)
 
 ## Installation
 
