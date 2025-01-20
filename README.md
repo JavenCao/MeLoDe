@@ -14,7 +14,7 @@
 
 MeLoDe is developped to detect DNAm for low-depth LRS data, which is an experimental design used in population-scale study.
 
-Using data from the PacBio platform as an example, below is the workflow to obtain the 5mCpG site-level methylation frequency from such data.
+Below is the workflow to obtain the 5mCpG site-level methylation frequency from such data.
 
 Raw data required: long reads sequencing data with subreads and kinetic signals avaliable.
 
