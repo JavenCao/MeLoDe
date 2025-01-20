@@ -136,35 +136,51 @@ The tab-delimited output file of "Sample_Name.JointCpG.MeLoDe-HiFi.txt.gz" repor
 ## (Advanced) Model training
 
 By default, MeLoDe uses the pre-trained models, which are released together with the software.
-
-        ├── Saved_model
-        │   ├── JointCpG-Combo_model
+        .
+        ├── JointCpG-Combo_model
+        │   ├── assets
+        │   ├── saved_model.pb
+        │   └── variables
+        │       ├── variables.data-00000-of-00001
+        │       └── variables.index
+        ├── JointCpG-HiFi_model
+        │   ├── assets
+        │   ├── saved_model.pb
+        │   └── variables
+        │       ├── variables.data-00000-of-00001
+        │       └── variables.index
+        ├── ZMWmeth_HiFi_model
+        │   ├── ds
+        │   │   ├── assets
         │   │   ├── saved_model.pb
         │   │   └── variables
         │   │       ├── variables.data-00000-of-00001
         │   │       └── variables.index
-        │   ├── JointCpG-HiFi_model
+        │   └── ss
+        │       ├── assets
+        │       ├── saved_model.pb
+        │       └── variables
+        │           ├── variables.data-00000-of-00001
+        │           └── variables.index
+        ├── ZMWmeth_Subreads_model
+        │   ├── Closed-ZMW
+        │   │   ├── assets
         │   │   ├── saved_model.pb
         │   │   └── variables
         │   │       ├── variables.data-00000-of-00001
         │   │       └── variables.index
-        │   ├── ZMWmeth_HiFi_model
-        │   │   └── ds
-        │   │       ├── saved_model.pb
-        │   │       └── variables
-        │   │           ├── variables.data-00000-of-00001
-        │   │           └── variables.index
-        │   └── ZMWmeth_Subreads_model
-        │       ├── Closed-ZMW
-        │       │   ├── saved_model.pb
-        │       │   └── variables
-        │       │       ├── variables.data-00000-of-00001
-        │       │       └── variables.index
-        │       └── Open-ZMW
-        │           ├── saved_model.pb
-        │           └── variables
-        │               ├── variables.data-00000-of-00001
-        │               └── variables.index
+        │   └── Open-ZMW
+        │       ├── assets
+        │       ├── saved_model.pb
+        │       └── variables
+        │           ├── variables.data-00000-of-00001
+        │           └── variables.index
+        └── model_training_scripts
+        ├── readtrain.py
+        ├── save_model.py
+        ├── sitetrain.py
+        ├── sitetrain_format_Combo.py
+        └── sitetrain_format_HiFi.py
 
 Users could train their own *ZMWmeth model* and *Joint-CpG model* to determine read-level 5mCpG status, and estimate site-level 5mCpG frequency, respectively.
 
