@@ -269,11 +269,11 @@ By running these 2 commandlines, molecule-level 5mCpG predictions can be obtaine
 
 **- Step2 - create CpG study-window for Joint-CpG model**
 
-        python MeLoDe_Format_CpG.py -hifizmw HiFi.SingleMol_5mCpG.txt.gz \
-                                    -subreadzmw Subread.SingleMol_5mCpG.txt.gz \
-                                    -trueMe WGBS.cpg.txt \
-                                    -maxCpGnum 1000 \
-                                    -o Sample_CpG \
+        python sitetrain_format_Combo.py -hifizmw HiFi.SingleMol_5mCpG.txt.gz \
+                                         -subreadzmw Subread.SingleMol_5mCpG.txt.gz \
+                                         -trueMe WGBS.cpg.txt \
+                                         -maxCpGnum 1000 \
+                                         -o Sample_CpG
 
 Specifically, training data can be pre-selected for customization. Such as:
 * Using CpG sites from chromosome 7
@@ -293,7 +293,7 @@ Put well-formatted CpG study-window into a .fofn (file of file names), such as:
         python sitetrain.py -npzl JointCpG.npz.fofn \
                             -r 5 \
                             -bz 5 \
-                            -o out.MeLoDe.Combo.JointCpG.model
+                            -o /output/folder/
 
 ## Full parameter table
 TBD
