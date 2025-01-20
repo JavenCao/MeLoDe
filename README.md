@@ -1,6 +1,8 @@
 # MeLoDe
  <u>**De**</u>tect DNA **Me**thylaion from **Lo**w-depth long-read sequencing
 
+![combi_workflow](https://github.com/user-attachments/assets/06578406-3a93-4707-a708-2254ac188300)
+
 ## Installation
 
          git clone ### (can we also include Tensorlow_C and a GO into our git, and install them automatically, so that users will not need to do this)
@@ -12,7 +14,7 @@
 
 MeLoDe is developped to detect DNAm for low-depth long reads sequencing data, which is an experimental design commonly used in population-scale study.
 
-Using data from the PacBio platform as an example, below is the workflow to obtain the 5mCpG site-level methylation frequency from such data.
+Below is the workflow to obtain the 5mCpG site-level methylation frequency from such data.
 
 Raw data required: long reads sequencing data with subreads and kinetic signals avaliable (MeLoDe is versatile, and can be applied to HiFi reads directly, in case you don't have access to the subreads data, say data from the Revio platform).
 
