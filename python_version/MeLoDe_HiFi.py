@@ -124,13 +124,16 @@ def normZMWprediction_H(ZMWprefile_HiFi, minZMWdepth):
 #
 def get_normalized_histo(probs):
     """
+    Modified: 2024-12-16, 30len
     Freeze 2024-01-09
     """
     cov = len(probs)
     if cov == 0:
-        norm_hist = [0] * 10
+        # norm_hist = [0] * 10
+        norm_hist = [0] * 30
     else:
-        hist = np.histogram(probs, bins=10, range=[0, 1])[0]
+        # hist = np.histogram(probs, bins=10, range=[0, 1])[0]
+        hist = np.histogram(probs, bins=30, range=[0, 1])[0]
         norm = np.linalg.norm(hist)
         norm_hist = hist / norm
     return norm_hist
