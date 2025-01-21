@@ -7,8 +7,8 @@ rundir=/path/to/MeLoDe-main
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 
-inbamfile=${rundir}/Demo_data/Demo.MssI.top.hifi.bam
-outprefix=${rundir}/Demo_data/5mCtaged.Demo.MssI.top.hifi
+inbamfile=${rundir}/Demo_data/Demo.meHG005_hifi.bam
+outprefix=${rundir}/Demo_data/5mCtaged.Demo.meHG005_hifi
 
 
 
@@ -22,8 +22,8 @@ outprefix=${rundir}/Demo_data/5mCtaged.Demo.MssI.top.hifi
                 -Processor 1
 
 
-inbamfile=${rundir}/Demo_data/Demo.WGA.top.hifi.bam
-outprefix=${rundir}/Demo_data/5mCtaged.Demo.WGA.top.hifi
+inbamfile=${rundir}/Demo_data/Demo.wgaHG005_hifi.bam
+outprefix=${rundir}/Demo_data/5mCtaged.Demo.wgaHG005_hifi
     MeLoDe_Read -bamfile ${inbamfile} \
                 -InBamStatus unaligned \
                 -readformat HIFI \
