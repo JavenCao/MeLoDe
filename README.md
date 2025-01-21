@@ -47,7 +47,8 @@ For HiFi reads data:
                     -Scale \
                     -Processor 10
 
--HDir is by default as: Saved_model/ZMWmeth_HiFi_model/ds
+-HDir is by default as: /path/to/MeLoDe-Main/Saved_model/ZMWmeth_HiFi_model/ds
+
 "HiFi.SingleMol_5mCpG.txt.gz" will be generated, in which CpG sites captured by HiFi reads are predicted.
 
 From subreads data:
@@ -63,8 +64,10 @@ From subreads data:
                     -Scale \
                     -Processor 10
 
--CDir is by default as: Saved_model/ZMWmeth_Subreads_model/Closed-ZMW
--ODir is by default as: Saved_model/ZMWmeth_Subreads_model/Open-ZMW
+-CDir is by default as: /path/to/MeLoDe-Main/Saved_model/ZMWmeth_Subreads_model/Closed-ZMW
+
+-ODir is by default as: /path/to/MeLoDe-Main/Saved_model/ZMWmeth_Subreads_model/Open-ZMW
+
 "Subread.SingleMol_5mCpG.txt.gz" will be generated, in which CpG sites captured by each molecule are predicted, using subreads as source data.
 
 These molecule-level output files are tab-delimited in the following format:
@@ -116,6 +119,8 @@ From **unaligned HiFi reads**:
                     -HDir /path/to/ZMWmeth_HiFi_model \
                     -Scale \
                     -Processor 10
+
+-HDir is by default as: /path/to/MeLoDe-Main/Saved_model/ZMWmeth_HiFi_model/ds
 
 "Sample_Name.5mc.mod.unaligned.bam" will be generated, in which the MM/ML tags are created, tagging the positions (MM) and 5mCpG probabilities (ML) of CpGs on each HiFi reads.
 Adding "--KeepKinetics keep" will keep the fi/fp/ri/rp tags, otherwise removed.
