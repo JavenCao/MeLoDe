@@ -21,7 +21,7 @@
 
 MeLoDe is developped to detect DNAm for low-depth long reads sequencing data, which is an experimental design commonly used in population-scale study.
 
-Below is the workflow to obtain the 5mCpG site-level methylation frequency from such data.
+MeLoDe utilizes both **HiFi and non-HiFi molecules**. Below is the workflow to obtain the 5mCpG site-level methylation frequency from such data.
 
 Raw data required: long reads sequencing data with subreads and kinetic signals avaliable (MeLoDe is versatile, and can be applied to HiFi reads directly, in case you don't have access to the subreads data, say, by Revio platform).
 
