@@ -315,7 +315,7 @@ Put well-formatted CpG study-window into a .fofn (file of file names), such as:
 
 ## Full parameter table
 
-Usage of MeLoDe_Read:
+Usage of **MeLoDe_Read**:
 
         -bamfile string
                 aligned/unaligned BAM file with kinetic signals, fi/fp/ri/rp for hifi reads, and ip/pw for subreads
@@ -363,7 +363,8 @@ Usage of MeLoDe_Read:
                 just process top N rows
 
 
-Usage of MeLoDe_Combo:
+Usage of **MeLoDe_Combo**:
+
         -HiFiZMWpre string
                 HiFi reads - single molecule level prediction. File format: txt.gz
         -SubreadsZMWpre string
@@ -384,7 +385,8 @@ Usage of MeLoDe_Combo:
                 how many CpG sites in a sliding window? (2 * r + 1) (default 5)
 
 
-Usage of MeLoDe_HiFi:
+Usage of **MeLoDe_HiFi**:
+
         -HiFiZMWpre string
                 HiFi reads - single molecule level prediction. File format: txt.gz
         -cpuprofile string
@@ -402,7 +404,8 @@ Usage of MeLoDe_HiFi:
         -windowRadius int
                 how many CpG sites in a sliding window? (2 * r + 1) (default 5)
 
-Usage of MeLoDe_TagExtract:
+Usage of **MeLoDe_TagExtract**:
+
         -bamfile string
                 Aligned HiFi Bam file with MM/ML tags
         -cpuprofile string
