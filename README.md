@@ -422,5 +422,5 @@ Usage of **MeLoDe_TagExtract**:
         -topN int
                 just process top N rows
 
-## Input data and parameter map##
+## Input data and parameter map
 ![combi_workflow](Figure/InputData.png)
