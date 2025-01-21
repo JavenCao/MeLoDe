@@ -1,5 +1,8 @@
 #!/bin/bash
 
+SCRIPT_DIR=$(realpath $(dirname "$0"))
+echo "Script absolute directory: $SCRIPT_DIR"
+
 # 检查是否安装了 Go
 if command -v go &> /dev/null; then
     echo "Go is already installed. Version: $(go version)"
@@ -9,30 +12,30 @@ else
     # 设置 Go 的版本
     GO_VERSION=1.20.4
 
-    # 设置安装路径（无 root 权限时安装到用户主目录）
-    INSTALL_DIR="$HOME/mygo"
+    # 设置安装路径
+    INSTALL_DIR="$SCRIPT_DIR/mygo"
 
     # 设置下载目录
-    DOWNLOAD_DIR="$HOME/Downloads"
+    DOWNLOAD_DIR="$SCRIPT_DIR/Downloads"
     mkdir -p $DOWNLOAD_DIR
 
-    # 下载 Go 安装包到用户主目录
+    # 下载 Go 安装包
     wget -q -O $DOWNLOAD_DIR/go$GO_VERSION.tar.gz https://go.dev/dl/go$GO_VERSION.linux-amd64.tar.gz
 
-    # 解压 Go 安装包到用户主目录
+    # 解压 Go 安装包
     mkdir -p $INSTALL_DIR
     tar -C $INSTALL_DIR -xzf $DOWNLOAD_DIR/go$GO_VERSION.tar.gz --strip-components=1
 
 
     # 创建工作目录
-    mkdir -p $HOME/go_workspace
+    mkdir -p $SCRIPT_DIR/go_workspace
 
     # 配置环境变量
     #echo "export PATH=\$PATH:$INSTALL_DIR/bin" >> ~/.bashrc
     #echo "export GOPATH=\$HOME/go_workspace" >> ~/.bashrc
     #echo "export GOROOT=$INSTALL_DIR" >> ~/.bashrc
     export PATH=$PATH:$INSTALL_DIR/bin
-    export GOPATH=$HOME/go_workspace
+    export GOPATH=$SCRIPT_DIR/go_workspace
     export GOROOT=$INSTALL_DIR
 
     # 使配置生效
@@ -44,9 +47,6 @@ else
 fi
 
 
-
-SCRIPT_DIR=$(realpath $(dirname "$0"))
-echo "Script absolute directory: $SCRIPT_DIR"
 export CGO_CFLAGS="-I$SCRIPT_DIR/libtensorflow/include"
 echo $CGO_CFLAGS
 
