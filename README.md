@@ -5,13 +5,17 @@
 
 ## Installation
 
-**replace /path/to/MeLoDe-Main accordingly.**
+**update dir=/path/to/MeLoDe-Main accordingly.**
 
          git clone https://github.com/JavenCao/MeLoDe.git
-         cd /path/to/MeLoDe-Main
+         
+         # (!please update!)
+         dir=/path/to/MeLoDe-Main
+         
+         cd ${dir}
          sh install.sh
-         export PATH=$PATH:/path/to/MeLoDe-Main/bin
-         export LD_LIBRARY_PATH=/path/to/MeLoDe-Main/libtensorflow/lib:$LD_LIBRARY_PATH
+         export PATH=$PATH:${dir}/bin
+         export LD_LIBRARY_PATH=${dir}/libtensorflow/lib:$LD_LIBRARY_PATH
 
 ## Workflow of MeLoDe in the low-depth long reads sequencing data
 
