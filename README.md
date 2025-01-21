@@ -5,6 +5,8 @@
 
 ## Installation
 
+**replace /path/to/MeLoDe-Main accordingly.**
+
          git clone https://github.com/JavenCao/MeLoDe.git
          cd /path/to/MeLoDe-Main
          sh install.sh
@@ -45,6 +47,7 @@ For HiFi reads data:
                     -Scale \
                     -Processor 10
 
+-HDir is by default as: Saved_model/ZMWmeth_HiFi_model/ds
 "HiFi.SingleMol_5mCpG.txt.gz" will be generated, in which CpG sites captured by HiFi reads are predicted.
 
 From subreads data:
@@ -60,6 +63,8 @@ From subreads data:
                     -Scale \
                     -Processor 10
 
+-CDir is by default as: Saved_model/ZMWmeth_Subreads_model/Closed-ZMW
+-ODir is by default as: Saved_model/ZMWmeth_Subreads_model/Open-ZMW
 "Subread.SingleMol_5mCpG.txt.gz" will be generated, in which CpG sites captured by each molecule are predicted, using subreads as source data.
 
 These molecule-level output files are tab-delimited in the following format:
@@ -416,3 +421,6 @@ Usage of **MeLoDe_TagExtract**:
                 Read levle prediction file
         -topN int
                 just process top N rows
+
+## Input data and parameter map##
+![combi_workflow](Figure/InputData.png)
