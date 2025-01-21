@@ -314,5 +314,102 @@ Put well-formatted CpG study-window into a .fofn (file of file names), such as:
                             -o /output/folder/
 
 ## Full parameter table
-TBD
 
+Usage of MeLoDe_Read:
+
+        -bamfile string
+                aligned/unaligned BAM file with kinetic signals, fi/fp/ri/rp for hifi reads, and ip/pw for subreads
+        -InBamStatus string
+                aligned or unaligned
+        -readformat string
+                read type, SUBREAD or HIFI (default "HIFI")
+        -outputType string
+                Output Types: ModBam,Feature,MoleculeLevel. ModBam: Modification Bam file. | Feature: Feature matrix. | MoleculeLevel: Molecule level modification prediction
+        -outprefix string
+                [*outprefix*].modification.bam for ModBam outputType.  [*outprefix*].Kmat.txt.gz for Feature outputType. [*outprefix*].SingleMol.pre.txt.gz for MoleculeLevel outputType
+
+
+        -HDir string
+                ZMWmeth-HiFi model directory, Saved_model/ZMWmeth_HiFi_model/ds
+        -CDir string
+                ZMWmeth-ClosedZMW model directory, Saved_model/ZMWmeth_Subreads_model/Closed-ZMW
+        -ODir string
+                ZMWmeth-OpenZMW model directory, Saved_model/ZMWmeth_Subreads_model/Open-ZMW
+
+
+        -KeepKinetics string
+                remove or keep. flag to indicate keep or remove the kinetic signals in the output Bam file (default "remove")
+        -radius int
+                cpg +/- r base pairs will be included in the read-level prediction (default 10)
+        -minsubreadsdepth int
+                min subreads depth for a ZMW to be included (default 1)
+        -maxsubreadsdepth int
+                max subreads depth for a ZMW to be excluded (default 60)
+        -MappingQuality int
+                min mapping quality for a read to be included (default 30)
+        -Processor int
+                Parallelism processors
+        -Reference string
+                The reference genome in fasta format when the input is an aligned bam
+        -Scale
+                flag to indicate scale the signal of each subreads, (x-mean)/std. Without this tag is raw signal value
+        -Chromosome string
+                processing chromosome (default "whole_genome")
+        -cpuprofile string
+                write cpu profile to this file
+        -loglevel int
+                0-debug,1-info,2-warn,3-error (default 1)
+        -topN int
+                just process top N rows
+
+
+Usage of MeLoDe_Combo:
+        -HiFiZMWpre string
+                HiFi reads - single molecule level prediction. File format: txt.gz
+        -SubreadsZMWpre string
+                ZMW prediction using subreads. File format: txt.gz
+        -cpuprofile string
+                write cpu profile to this file
+        -minZMWdepth int
+                min ZMW_molecule/HiFi_reads/CCS_reads depth (default 4)
+        -modelDir string
+                Joint-CpG model directory for MeLoDe-Combo
+        -outputfile string
+                CpG site level methylation frequency
+        -p int
+                Parallelism processors
+        -topN int
+                just process top N rows
+        -windowRadius int
+                how many CpG sites in a sliding window? (2 * r + 1) (default 5)
+
+
+Usage of MeLoDe_HiFi:
+        -HiFiZMWpre string
+                HiFi reads - single molecule level prediction. File format: txt.gz
+        -cpuprofile string
+                write cpu profile to this file
+        -minZMWdepth int
+                min ZMW_molecule/HiFi_reads/CCS_reads depth (default 4)
+        -modelDir string
+                Joint-CpG model directory for MeLoDe-Combo
+        -outputfile string
+                CpG site level methylation frequency
+        -p int
+                Parallelism processors
+        -topN int
+                just process top N rows
+        -windowRadius int
+                how many CpG sites in a sliding window? (2 * r + 1) (default 5)
+
+Usage of MeLoDe_TagExtract:
+        -bamfile string
+                Aligned HiFi Bam file with MM/ML tags
+        -cpuprofile string
+                write cpu profile to this file
+        -loglevel int
+                0-debug,1-info,2-warn,3-error (default 1)
+        -outfile string
+                Read levle prediction file
+        -topN int
+                just process top N rows
