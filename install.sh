@@ -56,6 +56,11 @@ tar -xvjf $SCRIPT_DIR/libtensorflow/lib/libtensorflow.so.2.13.0.tar.bz2 -C $SCRI
 export LIBRARY_PATH=$SCRIPT_DIR/libtensorflow/lib:$LIBRARY_PATH
 echo $LIBRARY_PATH
 
+#go mod tidy
+bash -c "cd ./src/read_predict && go mod tidy"
+bash -c "cd ./src/site_predict && go mod tidy"
+bash -c "cd ./src/tag_decode && go mod tidy"
+
 
 go build -C ./src/read_predict -o ../../bin/MeLoDe_Read cmd/cmd.go
 
