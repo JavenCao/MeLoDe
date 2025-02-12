@@ -55,12 +55,17 @@ func ExtractRecordTag(record *sam.Record) (*RecordTag, error) {
 		//log.Error().Msgf("record HP not exist, record name:%s", record.Name)
 		HP = "X"
 	} else {
-		HPVal, ok := HPAux.Value().(int32)
-		if !ok {
-			log.Error().Msgf("record HP invalid, record name:%s", record.Name)
-			return nil, fmt.Errorf("HP invalid")
-		}
-		HP = fmt.Sprintf("%d", HPVal)
+		//HPVal, ok := HPAux.Value().(int32)
+		//if !ok {
+		//	t := reflect.TypeOf(HPAux.Value())
+		//	log.Error().Msgf("HPAux.Value() type:%v", t)
+		//
+		//	log.Error().Msgf("record HP invalid, record name:%s", record.Name)
+		//	return nil, fmt.Errorf("HP invalid")
+		//}
+		//HP = fmt.Sprintf("%d", HPVal)
+		log.Debug().Msgf("HPAux.Value():%d", HPAux.Value())
+		HP = fmt.Sprintf("%d", HPAux.Value())
 	}
 
 	PSAux, exist := record.Tag([]byte{'P', 'S'})
@@ -68,12 +73,17 @@ func ExtractRecordTag(record *sam.Record) (*RecordTag, error) {
 		//log.Error().Msgf("record PS not exist, record name:%s", record.Name)
 		PS = "X"
 	} else {
-		PSVal, ok := PSAux.Value().(int32)
-		if !ok {
-			log.Error().Msgf("record PS invalid, record name:%s", record.Name)
-			return nil, fmt.Errorf("PS invalid")
-		}
-		PS = fmt.Sprintf("%d", PSVal)
+		//PSVal, ok := PSAux.Value().(int32)
+		//if !ok {
+		//	t := reflect.TypeOf(PSAux.Value())
+		//	log.Error().Msgf("PSAux.Value() type:%v", t)
+		//
+		//	log.Error().Msgf("record PS invalid, record name:%s", record.Name)
+		//	return nil, fmt.Errorf("PS invalid")
+		//}
+		//PS = fmt.Sprintf("%d", PSVal)
+		log.Debug().Msgf("PSAux.Value():%d", PSAux.Value())
+		PS = fmt.Sprintf("%d", PSAux.Value())
 	}
 
 	recordTag := &RecordTag{

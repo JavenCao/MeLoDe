@@ -147,7 +147,7 @@ func processAlignedHiFiRecord(wg *sync.WaitGroup, recordChan chan *sam.Record,
 			}
 			//检查mm和ml的长度是否相等
 			if len(mmTag) != len(mlTag) {
-				log.Error().Msgf("mm and ml length not equal err:%v, record name:%s", err, record.Name)
+				log.Error().Msgf("mm and ml length not equal err, record name:%s", record.Name)
 				continue
 			}
 
