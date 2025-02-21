@@ -80,6 +80,7 @@ if __name__ == "__main__":
         y_train = np.array(y_train)/100
         X_train_subset = X_train[subset_cg_index]
         del(X_train)
+        n_samples = len(subset_cg_index)
 
     if target_ex_cg_list != "NA" and target_cg_list == "NA":
         shared_target_cg_list = [x for x in keyof_X_train if x not in set(target_ex_cg_list)]
@@ -89,16 +90,19 @@ if __name__ == "__main__":
         y_train = np.array(y_train)/100
         X_train_subset = X_train[subset_cg_index]
         del(X_train)
+        n_samples = len(subset_cg_index)
 
     if target_cg_list == "NA" and target_ex_cg_list == "NA":
         y_train = [WGBS_label[x] for x in keyof_X_train]
         y_train = np.array(y_train)/100
         X_train_subset = X_train
+        n_samples = len(keyof_X_train)
 
     # ------------------------------------------------------------------------------------------
     #
     #
-    n_samples = len(subset_cg_index)
+    # n_samples = len(subset_cg_index)
+
     batch_size = maxCpGlimit
     n_batches = (n_samples + batch_size - 1) // batch_size
 

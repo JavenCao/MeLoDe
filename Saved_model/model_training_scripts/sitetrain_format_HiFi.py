@@ -11,7 +11,7 @@ def get_args():
     parser = argparse.ArgumentParser()
     # ZMW prediction files
     parser.add_argument("-hifizmw", "--HiFiZMWpre", required=True, help="Molecule level 5mCpG prediction using HiFi reads. File format: txt.gz")
-        parser.add_argument("-minZMWdep", "--minZMWdepth", required=False, default='4', type=int, help="min ZMW_molecule/HiFi_reads/CCS_reads depth")
+    parser.add_argument("-minZMWdep", "--minZMWdepth", required=False, default='4', type=int, help="min ZMW_molecule/HiFi_reads/CCS_reads depth")
     parser.add_argument("-r","--windowRadius", required=False, default='5', type=int, help="how many CpG sites in a sliding window? (2 * r + 1)")
     # Ground-truth filles
     parser.add_argument("-trueMe", "--TrueMeFile", required=True, help="true DNAm dataset, in bed format, and indexed by Cytosine position in Forward Strand ( 1-based coordinate system )")
@@ -81,6 +81,8 @@ if __name__ == "__main__":
         y_train = np.array(y_train)/100
         X_train_subset = X_train[subset_cg_index]
         del(X_train)
+        n_samples = len(subset_cg_index)
+
 
     if target_ex_cg_list != "NA" and target_cg_list == "NA":
         shared_target_cg_list = [x for x in keyof_X_train if x not in set(target_ex_cg_list)]
@@ -90,16 +92,20 @@ if __name__ == "__main__":
         y_train = np.array(y_train)/100
         X_train_subset = X_train[subset_cg_index]
         del(X_train)
+        n_samples = len(subset_cg_index)
+
 
     if target_cg_list == "NA" and target_ex_cg_list == "NA":
         y_train = [WGBS_label[x] for x in keyof_X_train]
         y_train = np.array(y_train)/100
         X_train_subset = X_train
+        n_samples = len(keyof_X_train)
+
 
     # ------------------------------------------------------------------------------------------
     #
     #
-    n_samples = len(subset_cg_index)
+    # n_samples = len(subset_cg_index)
     batch_size = maxCpGlimit
     n_batches = (n_samples + batch_size - 1) // batch_size
 
