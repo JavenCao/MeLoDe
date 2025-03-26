@@ -1,7 +1,6 @@
 package calc
 
 import (
-	"gonum.org/v1/gonum/mat"
 	"math"
 )
 
@@ -62,7 +61,7 @@ func GetNormalizedHistoHiFi(probs []float32) []float32 {
 	return normHist
 }
 
-// SlidingWindowView creates a sliding window view of the given data with specified window size and axis.
+/*// SlidingWindowView creates a sliding window view of the given data with specified window size and axis.
 func SlidingWindowView(data *mat.Dense, windowSize int, axis int) []*mat.Dense {
 	rows, cols := data.Dims()
 	if axis == 0 {
@@ -78,7 +77,7 @@ func SlidingWindowView(data *mat.Dense, windowSize int, axis int) []*mat.Dense {
 		result[i] = data.Slice(0, rows, i, i+windowSize).(*mat.Dense)
 	}
 	return result
-}
+}*/
 
 // SlidingWindowView2DArray creates a sliding window view of the given 2D array with specified window size along the given axis.
 func SlidingWindowView2DArray(data [][]float32, windowSize int, axis int) [][][]float32 {
