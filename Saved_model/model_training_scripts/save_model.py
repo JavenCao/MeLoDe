@@ -1,4 +1,4 @@
-modeljsonFile="/storage/yangjianLab/caoyujie/project/meth/5_Replication/3_Training_ground/zmw_model/factors/6_strand_resolution/2_models/HG005_strand.json"
+modeljsonFile="/storage/yangjianLab/caoyujie/project/meth/5_Replication/8_CKCG_high_2Dmodel/model_training/H_model_training/H_training_26M.V1C1.npz.file.list.model.HD.CpGModel.json"
 modelweightsFile=modeljsonFile + ".weights.h5"
 from keras.models import model_from_json
 json_file = open(modeljsonFile, 'r')
@@ -9,7 +9,7 @@ loaded_model.load_weights(modelweightsFile)
 
 
 import tensorflow as tf
-saved_model="/storage/yangjianLab/caoyujie/project/meth/5_Replication/3_Training_ground/zmw_model/factors/6_strand_resolution/2_models/hifi_ds"
+saved_model="/storage/yangjianLab/caoyujie/project/meth/5_Replication/8_CKCG_high_2Dmodel/model_training/H_model_training/H_model"
 # Convert the Keras model to the TensorFlow SavedModel format
 tf.saved_model.save(loaded_model, saved_model)
 
