@@ -3,7 +3,7 @@ package task
 import (
 	"github.com/Taichidasheen/site_predict/pkg/calc"
 	"github.com/Taichidasheen/site_predict/pkg/predict"
-	"log"
+	"github.com/rs/zerolog/log"
 	"strconv"
 	"strings"
 )
@@ -19,10 +19,10 @@ func RunComboTask(opts Options) error {
 	//step1: model loading
 	model, err := loadModel(modelDir, []string{"serve"})
 	if err != nil {
-		log.Printf("loadModel err:%v, modelDir:%s", err, modelDir)
+		log.Error().Msgf("loadModel err:%v, modelDir:%s", err, modelDir)
 		return err
 	}
-	log.Printf("loaded model:%v", model)
+	log.Info().Msgf("loaded model:%v", model)
 
 	//step2: read in read-level prediction
 	ZMWprobDictNorm, countBasedPredDict, depthOfMolCovDict := normZMWprediction_HCO(hiFiZMW, allZMW, minzmwDepth)
@@ -31,14 +31,14 @@ func RunComboTask(opts Options) error {
 	//step3: do the prediction
 	probes, err := predict.Predict(model, XTest)
 	if err != nil {
-		log.Printf("model predict err:%+v", err)
+		log.Error().Msgf("model predict err:%+v", err)
 		return err
 	}
 	//step4: format to write out
 	outFileName := opts.OutPrefix + ".JointCpG.MeLoDe-Combo.txt"
 	err = writeFile(outFileName, countBasedPredDict, depthOfMolCovDict, probes, XAveWeights, ZMWprobDictPosListSorted)
 	if err != nil {
-		log.Printf("writeFile err:%+v, outFileName:%s", err, outFileName)
+		log.Error().Msgf("writeFile err:%+v, outFileName:%s", err, outFileName)
 		return err
 	}
 	return nil
@@ -56,7 +56,7 @@ func normZMWprediction_HCO(ZMWprefile_HiFi, ALLZMW_prefile string, minZMWDepth i
 	// Read HiFi file
 	hifiLines, err := readFile(ZMWprefile_HiFi)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal().Msgf("%s readFile err:%+v", ZMWprefile_HiFi, err)
 	}
 	for _, line := range hifiLines {
 		if !strings.Contains(line, "nan") && !strings.HasPrefix(line, "Chr") {
@@ -78,7 +78,7 @@ func normZMWprediction_HCO(ZMWprefile_HiFi, ALLZMW_prefile string, minZMWDepth i
 	if ALLZMW_prefile != "NA" {
 		closedOpenLines, err := readFile(ALLZMW_prefile)
 		if err != nil {
-			log.Fatal(err)
+			log.Fatal().Msgf("%s readFile err:%+v", ALLZMW_prefile, err)
 		}
 		for _, line := range closedOpenLines {
 			if !strings.Contains(line, "nan") && !strings.HasPrefix(line, "Chr") {
@@ -127,7 +127,7 @@ func normZMWprediction_HCO(ZMWprefile_HiFi, ALLZMW_prefile string, minZMWDepth i
 			depthOfMolCovDict[pos] = totalMolecules
 
 			HiFiNormProbList := calc.GetNormalizedHisto(lists[0])
-			log.Printf("pos:%s, list[0]:%v, HiFiNormProbList:%+v", pos, lists[0], HiFiNormProbList)
+			log.Debug().Msgf("pos:%s, list[0]:%v, HiFiNormProbList:%+v", pos, lists[0], HiFiNormProbList)
 
 			ClosedNormProbList := calc.GetNormalizedHisto(lists[1])
 			OpenNormProbList := calc.GetNormalizedHisto(lists[2])
@@ -136,8 +136,8 @@ func normZMWprediction_HCO(ZMWprefile_HiFi, ALLZMW_prefile string, minZMWDepth i
 			ZMWprobDictNorm[pos] = append(ZMWprobDictNorm[pos], ClosedNormProbList...)
 			ZMWprobDictNorm[pos] = append(ZMWprobDictNorm[pos], OpenNormProbList...)
 			ZMWprobDictNorm[pos] = append(ZMWprobDictNorm[pos], countBasedDNAmFreq)
-			log.Printf("ZMWprobDictNorm[%s]:%+v", pos, ZMWprobDictNorm[pos])
-			log.Printf("countBasedPredDict[%s]:%+v", pos, countBasedPredDict[pos])
+			log.Debug().Msgf("ZMWprobDictNorm[%s]:%+v", pos, ZMWprobDictNorm[pos])
+			log.Debug().Msgf("countBasedPredDict[%s]:%+v", pos, countBasedPredDict[pos])
 		}
 	}
 

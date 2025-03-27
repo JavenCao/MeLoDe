@@ -3,7 +3,7 @@ package task
 import (
 	"github.com/Taichidasheen/site_predict/pkg/calc"
 	"github.com/Taichidasheen/site_predict/pkg/predict"
-	"log"
+	"github.com/rs/zerolog/log"
 	"strconv"
 	"strings"
 )
@@ -18,26 +18,27 @@ func RunHiFiTask(opts Options) error {
 	//step1: model loading
 	model, err := loadModel(modelDir, []string{"serve"})
 	if err != nil {
-		log.Printf("loadModel err:%v, modelDir:%s", err, modelDir)
+		log.Error().Msgf("loadModel err:%v, modelDir:%s", err, modelDir)
 		return err
 	}
-	log.Printf("loaded model:%v", model)
+	log.Info().Msgf("loaded model:%v", model)
 
 	//step2: read in read-level prediction
 	ZMWprobDictNorm, countBasedPredDict, depthOfMolCovDict := normZMWprediction_H(hiFiZMW, minzmwDepth)
+
 	XTest, XAveWeights, ZMWprobDictPosListSorted := CreateDataMatrixDistanceTesting(ZMWprobDictNorm, windowRadius)
 
 	//step3: do the prediction
 	probes, err := predict.Predict(model, XTest)
 	if err != nil {
-		log.Printf("model predict err:%+v", err)
+		log.Error().Msgf("model predict err:%+v", err)
 		return err
 	}
 	//step4: format to write out
 	outFileName := opts.OutPrefix + ".JointCpG.MeLoDe-HiFi.txt"
 	err = writeFile(outFileName, countBasedPredDict, depthOfMolCovDict, probes, XAveWeights, ZMWprobDictPosListSorted)
 	if err != nil {
-		log.Printf("writeFile err:%+v, outFileName:%s", err, outFileName)
+		log.Error().Msgf("writeFile err:%+v, outFileName:%s", err, outFileName)
 		return err
 	}
 	return nil
@@ -55,7 +56,7 @@ func normZMWprediction_H(ZMWprefile_HiFi string, minZMWDepth int) (map[string][]
 	// Read HiFi file
 	hifiLines, err := readFile(ZMWprefile_HiFi)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal().Msgf("%s readFile err:%+v", ZMWprefile_HiFi, err)
 	}
 	for _, line := range hifiLines {
 		if !strings.Contains(line, "nan") && !strings.HasPrefix(line, "Chr") {
@@ -88,12 +89,12 @@ func normZMWprediction_H(ZMWprefile_HiFi string, minZMWDepth int) (map[string][]
 			depthOfMolCovDict[pos] = totalMolecules
 
 			HiFiNormProbList := calc.GetNormalizedHistoHiFi(lists[0])
-			log.Printf("pos:%s, list[0]:%v, GetNormalizedHistoHiFi:%+v", pos, lists[0], HiFiNormProbList)
+			log.Debug().Msgf("pos:%s, list[0]:%v, GetNormalizedHistoHiFi:%+v", pos, lists[0], HiFiNormProbList)
 
 			ZMWprobDictNorm[pos] = append(ZMWprobDictNorm[pos], HiFiNormProbList...)
 			ZMWprobDictNorm[pos] = append(ZMWprobDictNorm[pos], countBasedDNAmFreq)
-			log.Printf("ZMWprobDictNorm[%s]:%+v", pos, ZMWprobDictNorm[pos])
-			log.Printf("countBasedPredDict[%s]:%+v", pos, countBasedPredDict[pos])
+			log.Debug().Msgf("ZMWprobDictNorm[%s]:%+v", pos, ZMWprobDictNorm[pos])
+			log.Debug().Msgf("countBasedPredDict[%s]:%+v", pos, countBasedPredDict[pos])
 		}
 	}
 

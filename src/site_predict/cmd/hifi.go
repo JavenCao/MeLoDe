@@ -4,7 +4,8 @@ import (
 	"flag"
 	"fmt"
 	"github.com/Taichidasheen/site_predict/pkg/task"
-	"log"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"os"
 	"runtime"
 	"runtime/pprof"
@@ -25,6 +26,7 @@ func main() {
 	//debug param
 	var cpuprofile string
 	var topN int
+	var logLevel int
 
 	//input related parameters
 	flag.StringVar(&hifiZMW, "HiFiZMWpre", "", "HiFi reads - single molecule level prediction. File format: txt.gz")
@@ -41,8 +43,11 @@ func main() {
 	//debug parameters
 	flag.StringVar(&cpuprofile, "cpuprofile", "", "write cpu profile to this file")
 	flag.IntVar(&topN, "topN", 0, "just process top N rows")
+	flag.IntVar(&logLevel, "loglevel", 3, "0-debug,1-info,2-warn,3-error")
 
 	flag.Parse()
+	log.Output(os.Stdout)
+	zerolog.SetGlobalLevel(zerolog.Level(logLevel))
 
 	fmt.Println("HiFiZMWpre:", hifiZMW)
 	fmt.Println("minZMWdepth:", minZMWDepth)
@@ -60,7 +65,7 @@ func main() {
 	if cpuprofile != "" {
 		f, err := os.Create(cpuprofile)
 		if err != nil {
-			log.Fatal(err)
+			log.Fatal().Msgf("err:%v", err)
 		}
 		pprof.StartCPUProfile(f)
 		defer pprof.StopCPUProfile()
@@ -78,7 +83,7 @@ func main() {
 
 	err := task.RunHiFiTask(opts)
 	if err != nil {
-		log.Fatalf("run task err:%+v, opts:%+v", err, opts)
+		log.Fatal().Msgf("run task err:%+v, opts:%+v", err, opts)
 		return
 	}
 

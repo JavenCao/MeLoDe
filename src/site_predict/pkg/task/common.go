@@ -5,8 +5,8 @@ import (
 	"compress/gzip"
 	"fmt"
 	"github.com/Taichidasheen/site_predict/pkg/calc"
+	"github.com/rs/zerolog/log"
 	tf "github.com/wamuir/graft/tensorflow"
-	"log"
 	"math"
 	"os"
 	"sort"
@@ -26,13 +26,13 @@ type Options struct {
 func loadModel(modelPath string, modelNames []string) (*tf.SavedModel, error) {
 	model, err := tf.LoadSavedModel(modelPath, modelNames, nil) // 载入模型
 	if err != nil {
-		log.Printf("LoadSavedModel err: %v", err)
+		log.Error().Msgf("LoadSavedModel err: %v", err)
 		return nil, err
 	}
 
-	log.Println("list possible ops in graphs")
+	log.Info().Msgf("list possible ops in graphs")
 	for _, op := range model.Graph.Operations() {
-		log.Printf("Op name: %v", op.Name())
+		log.Info().Msgf("Op name: %v", op.Name())
 	}
 
 	return model, nil
@@ -64,14 +64,14 @@ func writeFile(filename string, countBasedPredDict map[string][]float32, depthOf
 
 	length := len(probes)
 	if len(XAveWeights) != length || len(ZMWprobDictPosListSorted) != length {
-		log.Printf("data length check failed, len(probes):%d,"+
+		log.Info().Msgf("data length check failed, len(probes):%d,"+
 			"len(XAveWeights):%d, len(ZMWprobDictPosListSorted):%d", len(probes),
 			len(XAveWeights), len(ZMWprobDictPosListSorted))
 		return fmt.Errorf("data length check failed")
 	}
 	file, err := os.Create(filename)
 	if err != nil {
-		log.Fatalf("could not open file %q:", err)
+		log.Fatal().Msgf("could not open file %q:", err)
 		return err
 	}
 	defer file.Close()
@@ -92,7 +92,7 @@ func writeFile(filename string, countBasedPredDict map[string][]float32, depthOf
 	header := fmt.Sprintf("Chr\tPosC\tmolecule_cov\tmodel_based\tcount_based\tMe\tunMeth\tcisCpG_ave_weights\n")
 	_, err = writer.WriteString(header)
 	if err != nil {
-		log.Println("Error writing line:", err)
+		log.Error().Msgf("Error writing line:", err)
 		return err
 	}
 	for i := 0; i < length; i++ {
@@ -100,14 +100,14 @@ func writeFile(filename string, countBasedPredDict map[string][]float32, depthOf
 			chrs[i], postions[i], depthOfMolCov[i], probes[i], countBasedPred[i][0], countBasedPred[i][1], countBasedPred[i][2], XAveWeights[i])
 		_, err = writer.WriteString(line + "\n")
 		if err != nil {
-			log.Println("Error writing line:", err)
+			log.Error().Msgf("Error writing line:%v", err)
 			return err
 		}
 	}
 	// 将缓冲区的数据刷新到文件中
 	err = writer.Flush()
 	if err != nil {
-		log.Println("Error flushing writer:", err)
+		log.Error().Msgf("Error flushing writer err:%v", err)
 		return err
 	}
 	return nil
