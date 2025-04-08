@@ -18,7 +18,8 @@ func main() {
 	var subreadsZMW string
 	var minZMWDepth int
 	var windowRadius int
-	var modelDir string
+	var hcoModelDir string
+	var hcModelDir string
 	var outPrefix string
 
 	//processing param
@@ -34,7 +35,8 @@ func main() {
 	flag.StringVar(&subreadsZMW, "SubreadsZMWpre", "NA", "ZMW prediction using subreads. File format: txt.gz")
 	flag.IntVar(&minZMWDepth, "minZMWdepth", 4, "min ZMW_molecule/HiFi_reads/CCS_reads depth")
 	flag.IntVar(&windowRadius, "windowRadius", 5, "how many CpG sites in a sliding window? (2 * r + 1)")
-	flag.StringVar(&modelDir, "modelDir", "", "Joint-CpG model directory for MeLoDe-Combo")
+	flag.StringVar(&hcoModelDir, "HCOmodelDir", "", "Joint-CpG model directory for MeLoDe-Combo (HCO)")
+	flag.StringVar(&hcModelDir, "HCmodelDir", "", "Joint-CpG model directory for MeLoDe-Combo (HC)")
 
 	// processing parameters
 	flag.IntVar(&processor, "p", 0, "Parallelism processors")
@@ -55,7 +57,8 @@ func main() {
 	fmt.Println("SubreadsZMWpre:", subreadsZMW)
 	fmt.Println("minZMWdepth:", minZMWDepth)
 	fmt.Println("windowRadius:", windowRadius)
-	fmt.Println("modelDir:", modelDir)
+	fmt.Println("hcoModelDir:", hcoModelDir)
+	fmt.Println("hcModelDir:", hcModelDir)
 	fmt.Println("o:", outPrefix)
 
 	fmt.Println("processor:", processor)
@@ -76,18 +79,35 @@ func main() {
 
 	log.Printf("begin to process site predict task")
 
+	//hco model
 	opts := task.Options{
 		HiFiZMW:      hifiZMW,
 		AllZMW:       subreadsZMW,
 		MinZMWDepth:  minZMWDepth,
 		WindowRadius: windowRadius,
-		ModelDir:     modelDir,
+		ModelDir:     hcoModelDir,
 		OutPrefix:    outPrefix,
 	}
 
-	err := task.RunComboTask(opts)
+	err := task.RunComboTaskHCO(opts)
 	if err != nil {
 		log.Fatal().Msgf("run task err:%+v, opts:%+v", err, opts)
+		return
+	}
+
+	//hc model
+	hcopts := task.Options{
+		HiFiZMW:      hifiZMW,
+		AllZMW:       subreadsZMW,
+		MinZMWDepth:  minZMWDepth,
+		WindowRadius: windowRadius,
+		ModelDir:     hcoModelDir,
+		OutPrefix:    outPrefix,
+	}
+
+	err = task.RunComboTaskHC(hcopts)
+	if err != nil {
+		log.Fatal().Msgf("run task err:%+v, opts:%+v", err, hcopts)
 		return
 	}
 

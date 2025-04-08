@@ -1,0 +1,22 @@
+time="2024-09-27T18:08:57+08:00" level=info msg=iiiiiiiiiiiiii
+bamfile: 
+InBamStatus: 
+readformat: HIFI
+outputType: 
+outprefix: 
+KeepKinetics: remove
+HDir: 
+CDir: 
+ODir: 
+radius: 10
+minsubreadsdepth: 1
+maxsubreadsdepth: 60
+MappingQuality: 30
+Processor: 0
+Reference: 
+Scale: false
+Chromosome: whole_genome
+cpuprofile: 
+topN: 0
+maxProcs: 40
+time="2024-09-27T18:08:57+08:00" level=error msg="unsupported params, no task processed"
