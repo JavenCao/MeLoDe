@@ -329,7 +329,7 @@ def Aligned_HiFiReadsFeature(inbamf, cglist, outfile, minsubdep, maxsubdep, mapp
     fout = gzip.open(outfile, "wb")
     output_lines = []
     for read in samfile.fetch():
-        if (not read.is_secondary) and (not read.is_supplementary) and (read.mapping_quality >= mappingQ) and (Matching_ratio_Fun(read) >= 0.85):
+        if (not read.is_secondary) and (not read.is_supplementary) and (read.mapping_quality >= mappingQ) and (Matching_ratio_Fun(read) >= 0.1):
             fn = read.get_tag("fn")
             rn = read.get_tag("rn")
             total_subreads_dep = int(fn) + int(rn)
@@ -423,7 +423,7 @@ def Aligned_HiFiReadsMeth(bamf, cglist, outputp, outputType, minsubdep, maxsubde
         fn = read.get_tag("fn")
         rn = read.get_tag("rn")
         total_subreads_dep = int(fn) + int(rn)
-        if (not read.is_secondary) and (not read.is_supplementary) and (read.mapping_quality >= mappingQ) and (Matching_ratio_Fun(read) >= 0.85) and (total_subreads_dep >= minsubdep) and (total_subreads_dep <= maxsubdep) and (int(fn) >= 1) and (int(rn) >= 1):
+        if (not read.is_secondary) and (not read.is_supplementary) and (read.mapping_quality >= mappingQ) and (Matching_ratio_Fun(read) >= 0.1) and (total_subreads_dep >= minsubdep) and (total_subreads_dep <= maxsubdep) and (int(fn) >= 1) and (int(rn) >= 1):
             #
             aln_ref_chr = read.reference_name
             aln_ref_start = read.reference_start #0-based leftmost coordinate
@@ -859,7 +859,7 @@ def Aligned_subreadsBam_Feature(bamf, cglist, outputp, outputType, mappingQ, R, 
         fout = gzip.open(outfile, "wb")
         processed_read_count = 0
         for read in samfile.fetch():
-            if (not read.is_secondary) and (not read.is_supplementary) and (read.mapping_quality >= mappingQ) and (Matching_ratio_Fun(read) >= 0.85):
+            if (not read.is_secondary) and (not read.is_supplementary) and (read.mapping_quality >= mappingQ) and (Matching_ratio_Fun(read) >= 0.1):
                 aln_ref_chr = read.reference_name
                 aln_ref_start = read.reference_start #0-based leftmost coordinate
                 aln_ref_end = read.reference_end
@@ -961,7 +961,7 @@ def Aligned_subreadsBam_Meth(bamf, cglist, outputp, outputType, mappingQ, R, sca
         outfile = outputp + ".SingleMol.pre.txt.gz"
         processed_read_count = 0
         for read in samfile.fetch():
-            if (not read.is_secondary) and (not read.is_supplementary) and (read.mapping_quality >= mappingQ) and (Matching_ratio_Fun(read) >= 0.85):
+            if (not read.is_secondary) and (not read.is_supplementary) and (read.mapping_quality >= mappingQ) and (Matching_ratio_Fun(read) >= 0.1):
                 aln_ref_chr = read.reference_name
                 aln_ref_start = read.reference_start #0-based leftmost coordinate
                 aln_ref_end = read.reference_end
