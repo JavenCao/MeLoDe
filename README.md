@@ -53,7 +53,7 @@ For HiFi reads data:
 
 -HDir is by default as: /path/to/MeLoDe-Main/Saved_model/ZMWmeth_HiFi_model/ds
 
-"HiFi.SingleMol.pre.txt" will be generated, in which CpG sites captured by HiFi reads are predicted.
+"**HiFi.SingleMol.pre.txt**" will be generated, in which CpG sites captured by HiFi reads are predicted.
 
 From subreads data:
 
@@ -72,7 +72,7 @@ From subreads data:
 
 -ODir is by default as: /path/to/MeLoDe-Main/Saved_model/ZMWmeth_Subreads_model/Open-ZMW
 
-"Subread.SingleMol.pre.txt" will be generated, in which CpG sites captured by each molecule are predicted, using subreads as source data.
+"**Subread.SingleMol.pre.txt**" will be generated, in which CpG sites captured by each molecule are predicted, using subreads as source data.
 
 These molecule-level output files are tab-delimited in the following format:
 
@@ -95,7 +95,7 @@ These molecule-level output files are tab-delimited in the following format:
 
 This step uses HiFi reads to predict the CpG site-level DNA methylation frequency.
 
-"Site-level.JointCpG.MeLoDe-HiFi.txt" will be generated, in which only HiFi reads is used to predict CpG site-level methylation frequency.
+"**Site-level.JointCpG.MeLoDe-HiFi.txt**" will be generated, in which only HiFi reads is used to predict CpG site-level methylation frequency.
 
 
 **Step4B:** CpG site-level DNA methylation frequency prediction (HC and HCO model):
@@ -110,9 +110,9 @@ This step jointly uses HiFi reads and non-HiFi molecules (automatically identifi
 
 The following two files will be generated:
 
-"Site-level.JointCpG.MeLoDe-Combo.HC.txt"    : Jointly use HiFi reads(H) and non-HiFi-Closed-ZMW(C) to predict CpG site-level DNA methylation frequency
+"**Site-level.JointCpG.MeLoDe-Combo.HC.txt**"    : Jointly use HiFi reads(H) and non-HiFi-Closed-ZMW(C) to predict CpG site-level DNA methylation frequency
 
-"Site-level.JointCpG.MeLoDe-Combo.HCO.txt"   : Jointly use HiFi reads(H), non-HiFi-Closed-ZMW(C) and non-HiFi-Open-ZMW(O) to predict CpG site-level DNA methylation frequency
+"**Site-level.JointCpG.MeLoDe-Combo.HCO.txt**"   : Jointly use HiFi reads(H), non-HiFi-Closed-ZMW(C) and non-HiFi-Open-ZMW(O) to predict CpG site-level DNA methylation frequency
 
 These tab-delimited output files are in the following format:
 
