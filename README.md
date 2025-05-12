@@ -130,15 +130,15 @@ These tab-delimited output files are in the following format:
         MeLoDe_Merge -Hfile Site-level.JointCpG.MeLoDe-HiFi.txt \
                      -HCfile Site-level.JointCpG.MeLoDe-Combo.HC.txt \
                      -HCOfile Site-level.JointCpG.MeLoDe-Combo.HCO.txt \
-                     -outputfile MeLoDe
+                     -outputfile Test
 
 The following three files:
 
-"**MeLoDe.H.site.txt**"          :   incorporates predictions from H-sites only
+"**Test.MeLoDe_H.site.txt**"          :   incorporates predictions from H-sites only
 
-"**MeLoDe.H_HC.site.txt**"       :   combining H-sites and HC-sites predictions
+"**Test.MeLoDe_H_HC.site.txt**"       :   combining H-sites and HC-sites predictions
 
-"**MeLoDe.H_HC_HCO.site.txt**"   :   integrating all three CpG groups
+"**Test.MeLoDe_H_HC_HCO.site.txt**"   :   integrating all three CpG groups
 
 
 ## MeLoDe on HiFi reads
