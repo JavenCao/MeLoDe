@@ -134,11 +134,11 @@ These tab-delimited output files are in the following format:
 
 The following three files:
 
-"MeLoDe.H.site.txt"          :   incorporates predictions from H-sites only
+"**MeLoDe.H.site.txt**"          :   incorporates predictions from H-sites only
 
-"MeLoDe.H_HC.site.txt"       :   combining H-sites and HC-sites predictions
+"**MeLoDe.H_HC.site.txt**"       :   combining H-sites and HC-sites predictions
 
-"MeLoDe.H_HC_HCO.site.txt"   :   integrating all three CpG groups
+"**MeLoDe.H_HC_HCO.site.txt**"   :   integrating all three CpG groups
 
 
 ## MeLoDe on HiFi reads
@@ -160,7 +160,7 @@ From **unaligned HiFi reads**:
 
 -HDir is by default as: /path/to/MeLoDe-Main/Saved_model/ZMWmeth_HiFi_model/ds
 
-"Sample_Name.5mc.mod.unaligned.bam" will be generated, in which the MM/ML tags are created, tagging the positions (MM) and 5mCpG probabilities (ML) of CpGs on each HiFi reads.
+"**Sample_Name.5mc.mod.unaligned.bam**" will be generated, in which the MM/ML tags are created, tagging the positions (MM) and 5mCpG probabilities (ML) of CpGs on each HiFi reads.
 
 Adding "--KeepKinetics keep" will keep the fi/fp/ri/rp tags, otherwise removed.
 
@@ -181,7 +181,7 @@ Decode the mod.bam with MM/ML tag into read-level prediction:
                     -modelDir /path/to/H_model \
                     -outputfile Sample_Name
        
-The tab-delimited output file of "Sample_Name.JointCpG.MeLoDe-HiFi.txt.gz" reports DNA 5mCpG methylation frequency on CpG sites.
+The tab-delimited output file of "**Sample_Name.JointCpG.MeLoDe-HiFi.txt.gz**" reports DNA 5mCpG methylation frequency on CpG sites.
 
 ## (Advanced) Model training
 
