@@ -106,7 +106,6 @@ This step uses HiFi reads to predict the CpG site-level DNA methylation frequenc
                      -HCOmodelDir /path/to/HCO_model \
                      -outputfile Site-level
 
-
 This step jointly uses HiFi reads and non-HiFi molecules (automatically identified from SubreadsZMWpre) to predict the CpG site-level DNA methylation frequency.
 
 The following two files will be generated:
@@ -114,7 +113,6 @@ The following two files will be generated:
 "Site-level.JointCpG.MeLoDe-Combo.HC.txt"    : Jointly use HiFi reads(H) and non-HiFi-Closed-ZMW(C) to predict CpG site-level DNA methylation frequency
 
 "Site-level.JointCpG.MeLoDe-Combo.HCO.txt"   : Jointly use HiFi reads(H), non-HiFi-Closed-ZMW(C) and non-HiFi-Open-ZMW(O) to predict CpG site-level DNA methylation frequency
-
 
 These tab-delimited output files are in the following format:
 
@@ -143,7 +141,6 @@ The following three files:
 "MeLoDe.H_HC_HCO.site.txt"   :   integrating all three CpG groups
 
 
-
 ## MeLoDe on HiFi reads
 
 If you only have HiFi reads (say, from Revio platform), MeLoDe is compatible with HiFi reads. Please follow the steps below:
@@ -164,6 +161,7 @@ From **unaligned HiFi reads**:
 -HDir is by default as: /path/to/MeLoDe-Main/Saved_model/ZMWmeth_HiFi_model/ds
 
 "Sample_Name.5mc.mod.unaligned.bam" will be generated, in which the MM/ML tags are created, tagging the positions (MM) and 5mCpG probabilities (ML) of CpGs on each HiFi reads.
+
 Adding "--KeepKinetics keep" will keep the fi/fp/ri/rp tags, otherwise removed.
 
 **Step2: Alignment (not MeLoDe step)**
