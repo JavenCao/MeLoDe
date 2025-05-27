@@ -3,10 +3,20 @@
 SCRIPT_DIR=$(realpath $(dirname "$0"))
 echo "Script absolute directory: $SCRIPT_DIR"
 
-# 检查是否安装了 Go
+# 设置最低要求的 Go 版本
+REQUIRED_VERSION="1.16.0"
+
+# 提取当前 Go 版本（如果已安装）
 if command -v go &> /dev/null; then
+    CURRENT_VERSION=$(go version | awk '{print $3}' | sed 's/go//')
+else
+    CURRENT_VERSION=""
+fi
+
+# 如果 Go 已安装 且版本 >= 要求的版本，直接输出版本信息
+if [[ -n "$CURRENT_VERSION" ]] && \
+   [[ "$(printf '%s\n' "$REQUIRED_VERSION" "$CURRENT_VERSION" | sort -V | head -n1)" == "$REQUIRED_VERSION" ]]; then
     echo "Go is already installed. Version: $(go version)"
-    #exit 0
 else
     echo "Go is not installed. Proceeding with installation."
     # 设置 Go 的版本
@@ -69,3 +79,5 @@ go build -C ./src/site_predict -o ../../bin/MeLoDe_Combo cmd/combo.go
 go build -C ./src/site_predict -o ../../bin/MeLoDe_HiFi cmd/hifi.go
 
 go build -C ./src/tag_decode -o ../../bin/MeLoDe_TagExtract cmd/cmd.go
+
+go build -C ./src/tag_decode -o ../../bin/MeLoDe_Merge cmd/merge.go
