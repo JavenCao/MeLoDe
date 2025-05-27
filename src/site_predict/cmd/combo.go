@@ -101,7 +101,7 @@ func main() {
 		AllZMW:       subreadsZMW,
 		MinZMWDepth:  minZMWDepth,
 		WindowRadius: windowRadius,
-		ModelDir:     hcoModelDir,
+		ModelDir:     hcModelDir,
 		OutPrefix:    outPrefix,
 	}
 
